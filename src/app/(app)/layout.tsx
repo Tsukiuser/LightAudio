@@ -1,3 +1,4 @@
+import AudioPlayer from '@/components/AudioPlayer';
 import BottomNav from '@/components/BottomNav';
 
 export default function AppLayout({
@@ -7,7 +8,8 @@ export default function AppLayout({
 }) {
   return (
     <div className="relative flex min-h-screen flex-col bg-background">
-      <main className="flex-1 pb-20">{children}</main>
+      <main className="flex-1 pb-36">{children}</main>
+      <AudioPlayer />
       <BottomNav />
     </div>
   );

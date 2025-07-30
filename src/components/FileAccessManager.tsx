@@ -1,35 +1,60 @@
+
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useContext } from 'react';
 import { Button } from '@/components/ui/button';
 import { Music } from 'lucide-react';
+import { MusicContext } from '@/context/MusicContext';
+import { useToast } from '@/hooks/use-toast';
 
 export default function FileAccessManager({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [hasAccess, setHasAccess] = useState(false);
-  const [isClient, setIsClient] = useState(false);
+  const musicContext = useContext(MusicContext);
+  const { toast } = useToast();
 
-  useEffect(() => {
-    setIsClient(true);
-    const accessGranted = localStorage.getItem('localbeat_access_granted');
-    if (accessGranted === 'true') {
-      setHasAccess(true);
+  const grantAccess = async () => {
+    try {
+      // @ts-ignore
+      const dirHandle = await window.showDirectoryPicker();
+      await musicContext?.loadMusic(dirHandle);
+    } catch (error) {
+       console.error('Error accessing directory:', error);
+       if (error instanceof DOMException && error.name === 'AbortError') {
+        toast({
+            title: 'Permission Denied',
+            description: 'You did not grant permission to access the music folder.',
+            variant: 'destructive'
+        })
+       } else {
+        toast({
+            title: 'Error',
+            description: 'Could not access the music folder.',
+            variant: 'destructive'
+        })
+       }
     }
-  }, []);
-
-  const grantAccess = () => {
-    localStorage.setItem('localbeat_access_granted', 'true');
-    setHasAccess(true);
   };
   
-  if (!isClient) {
-    return null;
+  if (musicContext?.isLoading) {
+    return (
+       <div className="flex h-screen w-full flex-col items-center justify-center bg-background p-4 text-center">
+        <div className="flex flex-col items-center animate-in fade-in-50 duration-1000">
+          <Music className="h-16 w-16 text-primary mb-6 animate-pulse" />
+          <h1 className="text-3xl font-bold text-foreground mb-2 font-headline">
+            Scanning Library
+          </h1>
+          <p className="text-muted-foreground max-w-md mb-8">
+            Please wait while we scan your music collection...
+          </p>
+        </div>
+      </div>
+    )
   }
 
-  if (!hasAccess) {
+  if (!musicContext?.hasAccess) {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-background p-4 text-center">
         <div className="flex flex-col items-center animate-in fade-in-50 duration-1000">

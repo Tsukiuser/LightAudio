@@ -3,6 +3,7 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import FileAccessManager from '@/components/FileAccessManager';
 import ThemeManager from '@/components/ThemeManager';
+import { MusicProvider } from '@/context/MusicContext';
 
 export const metadata: Metadata = {
   title: 'Local Beat',
@@ -26,9 +27,11 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <ThemeManager />
-        <FileAccessManager>
-          {children}
-        </FileAccessManager>
+        <MusicProvider>
+          <FileAccessManager>
+            {children}
+          </FileAccessManager>
+        </MusicProvider>
         <Toaster />
       </body>
     </html>

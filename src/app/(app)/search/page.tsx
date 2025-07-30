@@ -1,26 +1,29 @@
+
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useContext } from 'react';
 import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/PageHeader';
-import { mockSongs } from '@/lib/mock-data';
 import { SongItem } from '@/components/SongItem';
 import { Search as SearchIcon } from 'lucide-react';
+import { MusicContext } from '@/context/MusicContext';
 
 export default function SearchPage() {
   const [query, setQuery] = useState('');
+  const musicContext = useContext(MusicContext);
+  const allSongs = musicContext?.songs || [];
 
   const filteredSongs = useMemo(() => {
     if (!query) {
       return [];
     }
-    return mockSongs.filter(
+    return allSongs.filter(
       (song) =>
         song.title.toLowerCase().includes(query.toLowerCase()) ||
         song.artist.toLowerCase().includes(query.toLowerCase()) ||
         song.album.toLowerCase().includes(query.toLowerCase())
     );
-  }, [query]);
+  }, [query, allSongs]);
 
   return (
     <div className="container mx-auto max-w-7xl px-0">

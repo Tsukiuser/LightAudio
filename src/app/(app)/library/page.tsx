@@ -1,16 +1,21 @@
+
+'use client'
+
+import { useContext } from 'react';
 import { PageHeader } from '@/components/PageHeader';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
-import { mockSongs } from '@/lib/mock-data';
 import { getAlbums, getArtists } from '@/lib/music-utils';
 import { AlbumCard } from '@/components/AlbumCard';
 import { SongItem } from '@/components/SongItem';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
+import { MusicContext } from '@/context/MusicContext';
 
 export default function LibraryPage() {
-  const allSongs = mockSongs;
+  const musicContext = useContext(MusicContext);
+  const allSongs = musicContext?.songs || [];
   const allAlbums = getAlbums(allSongs);
   const allArtists = getArtists(allSongs);
 

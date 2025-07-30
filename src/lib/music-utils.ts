@@ -1,6 +1,7 @@
 import type { Song, Album, Artist } from './types';
 
 export function getAlbums(songs: Song[]): Album[] {
+  if (!songs) return [];
   const albums = songs.reduce((acc, song) => {
     const albumName = song.album || 'Unknown Album';
     if (!acc[albumName]) {
@@ -18,6 +19,7 @@ export function getAlbums(songs: Song[]): Album[] {
 }
 
 export function getArtists(songs: Song[]): Artist[] {
+    if (!songs) return [];
     const albumsByArtist = songs.reduce((acc, song) => {
         const artistName = song.artist || 'Unknown Artist';
         if (!acc[artistName]) {
