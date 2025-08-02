@@ -25,6 +25,8 @@ interface MusicContextType {
   setIsPlaying: (isPlaying: boolean) => void;
   audioRef: React.RefObject<HTMLAudioElement>;
   analyser: AnalyserNode | null;
+  play: () => void;
+  pause: () => void;
 }
 
 export const MusicContext = createContext<MusicContextType | null>(null);
@@ -58,12 +60,8 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
 
 
   useEffect(() => {
-    // This effect runs once on mount to set up the audio player and context.
-    const audioElement = new Audio();
-    audioElement.id = 'audio-player-core';
-    document.body.appendChild(audioElement);
+    const audioElement = document.getElementById('audio-player-core') as HTMLAudioElement;
     audioRef.current = audioElement;
-    audioRef.current.crossOrigin = 'anonymous';
 
     const setupAudioContext = () => {
         if (audioRef.current && !audioContextRef.current) {
@@ -100,9 +98,6 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     
     return () => {
         document.removeEventListener('click', resumeAudioContext);
-        if (audioElement) {
-            audioElement.remove();
-        }
     }
   }, []);
 
@@ -224,7 +219,6 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
       audioContextRef.current.resume();
     }
     setCurrentSong(song);
-    setIsPlaying(true);
     if (newQueue) {
       setQueue(newQueue);
     } else {
@@ -236,6 +230,20 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
       }
     }
   };
+
+  const play = () => {
+    if (audioRef.current) {
+        audioRef.current.play().catch(e => console.error("Playback failed", e));
+        setIsPlaying(true);
+    }
+  }
+
+  const pause = () => {
+    if (audioRef.current) {
+        audioRef.current.pause();
+        setIsPlaying(false);
+    }
+  }
 
   const playNextSong = () => {
     if (!currentSong || queue.length === 0) return;
@@ -277,7 +285,9 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         isPlaying,
         setIsPlaying,
         audioRef,
-        analyser
+        analyser,
+        play,
+        pause
     }}>
       {children}
     </MusicContext.Provider>

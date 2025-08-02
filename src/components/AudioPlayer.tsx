@@ -35,10 +35,10 @@ export default function AudioPlayer() {
             audio.src = musicContext.currentSong.url;
             audio.load();
         }
-        audio.play().catch(e => console.error("Playback initiation failed", e));
-        musicContext?.setIsPlaying(true);
+        musicContext.play();
     }
-  }, [musicContext?.currentSong, audioRef, musicContext]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [musicContext?.currentSong]);
 
   useEffect(() => {
     const audio = audioRef?.current;
@@ -79,9 +79,9 @@ export default function AudioPlayer() {
   const togglePlayPause = () => {
     if (!musicContext?.currentSong) return;
     if (isPlaying) {
-      audioRef?.current?.pause();
+      musicContext.pause();
     } else {
-      audioRef?.current?.play();
+      musicContext.play();
     }
   };
   
