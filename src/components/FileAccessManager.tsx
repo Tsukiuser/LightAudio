@@ -23,11 +23,7 @@ export default function FileAccessManager({
     } catch (error) {
        console.error('Error accessing directory:', error);
        if (error instanceof DOMException && error.name === 'AbortError') {
-        toast({
-            title: 'Permission Denied',
-            description: 'You did not grant permission to access the music folder.',
-            variant: 'destructive'
-        })
+        // Silently ignore abort errors, as the user cancelled the picker.
        } else {
         toast({
             title: 'Error',
@@ -44,10 +40,10 @@ export default function FileAccessManager({
         <div className="flex flex-col items-center animate-in fade-in-50 duration-1000">
           <Music className="h-16 w-16 text-primary mb-6 animate-pulse" />
           <h1 className="text-3xl font-bold text-foreground mb-2 font-headline">
-            Scanning Library
+            Loading Library
           </h1>
           <p className="text-muted-foreground max-w-md mb-8">
-            Please wait while we scan your music collection...
+            Please wait while we load your music collection...
           </p>
         </div>
       </div>
