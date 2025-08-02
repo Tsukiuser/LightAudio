@@ -5,13 +5,12 @@ import { useContext, useRef, useEffect, useState } from 'react';
 import Image from 'next/image';
 import { MusicContext } from '@/context/MusicContext';
 import { Slider } from './ui/slider';
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, ListMusic, Sparkles } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, ListMusic } from 'lucide-react';
 import { Button } from './ui/button';
 import { formatDuration } from '@/lib/utils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from './ui/sheet';
 import { ScrollArea } from './ui/scroll-area';
 import { SongItem } from './SongItem';
-import { Separator } from './ui/separator';
 
 export default function AudioPlayer() {
   const musicContext = useContext(MusicContext);
@@ -112,13 +111,9 @@ export default function AudioPlayer() {
     return null;
   }
   
-  const { currentSong, userQueue, aiQueue } = musicContext;
-  const queue = [...userQueue, ...aiQueue];
+  const { currentSong, queue } = musicContext;
   const currentSongIndexInQueue = queue.findIndex(s => s.id === currentSong.id);
   const upNext = queue.slice(currentSongIndexInQueue + 1);
-
-  const userQueueSongs = upNext.filter(song => userQueue.some(s => s.id === song.id));
-  const aiQueueSongs = upNext.filter(song => aiQueue.some(s => s.id === song.id));
 
 
   return (
@@ -178,21 +173,7 @@ export default function AudioPlayer() {
                     <ScrollArea className="h-[calc(100%-65px)]">
                         <div className="p-2">
                         {upNext.length > 0 ? (
-                           <>
-                            {userQueueSongs.length > 0 && userQueueSongs.map((song) => <SongItem key={song.id} song={song} />)}
-                            
-                            {userQueueSongs.length > 0 && aiQueueSongs.length > 0 && <Separator className="my-2" />}
-
-                            {aiQueueSongs.length > 0 && (
-                                <div className="mt-2">
-                                    <h3 className="px-2 text-sm font-semibold text-muted-foreground flex items-center">
-                                        <Sparkles className="mr-2 h-4 w-4 text-primary" />
-                                        <span>AI Generated</span>
-                                    </h3>
-                                    {aiQueueSongs.map((song) => <SongItem key={song.id} song={song} isAiGenerated />)}
-                                </div>
-                            )}
-                           </>
+                            upNext.map((song) => <SongItem key={song.id} song={song} />)
                         ) : (
                             <p className="p-4 text-center text-muted-foreground">The queue is empty.</p>
                         )}

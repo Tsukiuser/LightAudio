@@ -5,14 +5,12 @@ import { createContext, useState, useEffect, ReactNode, useCallback } from 'reac
 import type { Song } from '@/lib/types';
 // @ts-ignore
 import * as music from 'music-metadata-browser';
-import { generatePlaylist } from '@/ai/flows/playlist-flow';
 import { useToast } from '@/hooks/use-toast';
 
 interface MusicContextType {
   songs: Song[];
   currentSong: Song | null;
-  userQueue: Song[];
-  aiQueue: Song[];
+  queue: Song[];
   playSong: (song: Song, newQueue?: Song[]) => void;
   playNextSong: () => void;
   playPreviousSong: () => void;
@@ -20,9 +18,6 @@ interface MusicContextType {
   loadMusic: (directoryHandle: FileSystemDirectoryHandle) => Promise<void>;
   hasAccess: boolean;
   isLoading: boolean;
-  isAiPlaylistEnabled: boolean;
-  setAiPlaylistEnabled: (enabled: boolean) => void;
-  isGeneratingPlaylist: boolean;
 }
 
 export const MusicContext = createContext<MusicContextType | null>(null);
@@ -43,14 +38,10 @@ async function getPermission(directoryHandle: FileSystemDirectoryHandle) {
 export const MusicProvider = ({ children }: { children: ReactNode }) => {
   const [songs, setSongs] = useState<Song[]>([]);
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
-  const [userQueue, setUserQueue] = useState<Song[]>([]);
-  const [aiQueue, setAiQueue] = useState<Song[]>([]);
+  const [queue, setQueue] = useState<Song[]>([]);
   const [directoryHandle, setDirectoryHandle] = useState<FileSystemDirectoryHandle | null>(null);
   const [hasAccess, setHasAccess] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [listeningHistory, setListeningHistory] = useState<Song[]>([]);
-  const [isAiPlaylistEnabled, setIsAiPlaylistEnabled] = useState(false);
-  const [isGeneratingPlaylist, setIsGeneratingPlaylist] = useState(false);
   const { toast } = useToast();
 
   const loadMusicFromHandle = useCallback(async (dirHandle: FileSystemDirectoryHandle) => {
@@ -135,143 +126,56 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     checkAccess();
   }, []);
 
-  const setAiPlaylistEnabled = (enabled: boolean) => {
-    setIsAiPlaylistEnabled(enabled);
-    if (!enabled) {
-        setAiQueue([]);
-        // if user queue is empty, clear current song
-        if (userQueue.length === 0) {
-            setCurrentSong(null);
-        } else {
-            setCurrentSong(userQueue[0]);
-        }
-    }
-  }
-
-  const triggerAiPlaylistGeneration = useCallback(async () => {
-    if (listeningHistory.length === 0 || songs.length === 0 || isGeneratingPlaylist) {
-      return;
-    }
-    setIsGeneratingPlaylist(true);
-    try {
-        const libraryForAi = songs.map(s => ({id: s.id, title: s.title, artist: s.artist, album: s.album}));
-        const historyForAi = listeningHistory.map(s => ({id: s.id, title: s.title, artist: s.artist, album: s.album}));
-      
-        const result = await generatePlaylist({ history: historyForAi, library: libraryForAi });
-      
-        const newAiSongIds = result.playlist;
-        const newAiSongs = songs.filter(s => newAiSongIds.includes(s.id));
-        setAiQueue(newAiSongs);
-
-        if (!currentSong) {
-            setCurrentSong(newAiSongs[0] || null);
-        }
-        
-    } catch (error) {
-      console.error("Failed to generate AI playlist:", error);
-      toast({
-          title: "AI Playlist Error",
-          description: "Could not generate a playlist. Please try again later.",
-          variant: "destructive"
-      });
-    } finally {
-        setIsGeneratingPlaylist(false);
-    }
-  }, [listeningHistory, songs, isGeneratingPlaylist, toast, currentSong]);
-
-
-  useEffect(() => {
-    if (isAiPlaylistEnabled && (listeningHistory.length > 0 || aiQueue.length === 0)) {
-        const handle = setTimeout(() => {
-            triggerAiPlaylistGeneration();
-        }, 2000); // Debounce AI call
-        return () => clearTimeout(handle);
-    }
-  }, [isAiPlaylistEnabled, listeningHistory, triggerAiPlaylistGeneration, aiQueue.length]);
-
-
   const playSong = (song: Song, newQueue?: Song[]) => {
-    // Add to listening history
-    setListeningHistory(prev => [song, ...prev].slice(0, 20));
-
     setCurrentSong(song);
-
-    if (isAiPlaylistEnabled) {
-        // When AI is on, playing a song just sets it as current, doesn't change the queue
-        // unless it's not already in one of the queues.
-        const inUserQueue = userQueue.some(s => s.id === song.id);
-        const inAiQueue = aiQueue.some(s => s.id === song.id);
-        if(!inUserQueue && !inAiQueue) {
-            setUserQueue(prev => [song, ...prev]);
-        }
+    if (newQueue) {
+      setQueue(newQueue);
     } else {
-        if (newQueue) {
-            setUserQueue(newQueue);
-        } else {
-            const songIndex = songs.findIndex(s => s.id === song.id);
-            if(songIndex !== -1) {
-                setUserQueue(songs.slice(songIndex));
-            } else {
-                setUserQueue([song]);
-            }
-        }
-        setAiQueue([]);
+      // If no queue is provided, play the single song.
+      const songIndex = songs.findIndex(s => s.id === song.id);
+      if(songIndex !== -1) {
+        setQueue(songs.slice(songIndex));
+      } else {
+        setQueue([song]);
+      }
     }
   };
 
   const playNextSong = () => {
-    const fullQueue = [...userQueue, ...aiQueue];
-    if (!currentSong || fullQueue.length === 0) return;
-
-    const currentIndex = fullQueue.findIndex(s => s.id === currentSong.id);
-    if (currentIndex === -1 || currentIndex === fullQueue.length - 1) {
-        // If it's the last song and AI is enabled, generate more
-        if (isAiPlaylistEnabled) {
-            triggerAiPlaylistGeneration();
-        } else {
-            // otherwise, stop playback
-             setCurrentSong(null);
-        }
-        return;
+    if (!currentSong || queue.length === 0) return;
+    const currentIndex = queue.findIndex(s => s.id === currentSong.id);
+    if (currentIndex === -1 || currentIndex === queue.length - 1) {
+      // It's the last song, so stop playback
+      setCurrentSong(null);
+      return;
     }
-    const nextSong = fullQueue[currentIndex + 1];
-    setCurrentSong(nextSong);
-    setListeningHistory(prev => [nextSong, ...prev].slice(0, 20));
+    setCurrentSong(queue[currentIndex + 1]);
   };
 
   const playPreviousSong = () => {
-    const fullQueue = [...userQueue, ...aiQueue];
-    if (!currentSong || fullQueue.length === 0) return;
-    const currentIndex = fullQueue.findIndex(s => s.id === currentSong.id);
+    if (!currentSong || queue.length === 0) return;
+    const currentIndex = queue.findIndex(s => s.id === currentSong.id);
     if (currentIndex > 0) {
-      const prevSong = fullQueue[currentIndex - 1];
-      setCurrentSong(prevSong);
-      setListeningHistory(prev => [prevSong, ...prev].slice(0, 20));
+      setCurrentSong(queue[currentIndex - 1]);
     }
   };
 
   const addToQueue = (song: Song) => {
-    setUserQueue(prevQueue => [...prevQueue, song]);
+    setQueue(prevQueue => [...prevQueue, song]);
   }
-  
-  const queue = isAiPlaylistEnabled ? [...userQueue, ...aiQueue] : userQueue;
 
   return (
     <MusicContext.Provider value={{ 
         songs, 
-        currentSong,
-        userQueue,
-        aiQueue,
+        currentSong, 
+        queue, 
         playSong, 
         playNextSong,
         playPreviousSong,
         addToQueue,
         loadMusic: loadMusicFromHandle,
         hasAccess,
-        isLoading,
-        isAiPlaylistEnabled,
-        setAiPlaylistEnabled,
-        isGeneratingPlaylist
+        isLoading
     }}>
       {children}
     </MusicContext.Provider>
