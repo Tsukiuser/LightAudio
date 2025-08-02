@@ -49,7 +49,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
   const [hasAccess, setHasAccess] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
-  const audioRef = useRef<HTMLAudioElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const { toast } = useToast();
 
   const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
@@ -58,16 +58,19 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
 
 
   useEffect(() => {
-    const setupAudioContext = () => {
-        // We create a new audio element here and append it to the body
-        // This ensures it is never removed from the DOM
-        if (!audioRef.current) {
-            (audioRef as React.MutableRefObject<HTMLAudioElement | null>).current = new Audio();
+    // This effect runs once on mount to set up the audio player and context.
+    
+    // Assign the audio element to the ref
+    if (!audioRef.current) {
+        const audioElement = document.getElementById('audio-player-core') as HTMLAudioElement;
+        if (audioElement) {
+            audioRef.current = audioElement;
             audioRef.current.crossOrigin = 'anonymous';
-            document.body.appendChild(audioRef.current);
         }
-        
-        if (!audioContextRef.current) {
+    }
+
+    const setupAudioContext = () => {
+        if (audioRef.current && !audioContextRef.current) {
             try {
                 const context = new (window.AudioContext || (window as any).webkitAudioContext)();
                 audioContextRef.current = context;
@@ -94,16 +97,13 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         if (audioContextRef.current?.state === 'suspended') {
             audioContextRef.current.resume();
         }
-        document.removeEventListener('click', resumeAudioContext);
     };
-    document.addEventListener('click', resumeAudioContext);
+    
+    // Resume context on first user interaction
+    document.addEventListener('click', resumeAudioContext, { once: true });
     
     return () => {
         document.removeEventListener('click', resumeAudioContext);
-        // Do not disconnect or close context here to keep it alive
-        if (audioRef.current) {
-            document.body.removeChild(audioRef.current);
-        }
     }
   }, []);
 
@@ -222,6 +222,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
 
   const playSong = (song: Song, newQueue?: Song[]) => {
     setCurrentSong(song);
+    setIsPlaying(true);
     if (newQueue) {
       setQueue(newQueue);
     } else {
@@ -276,6 +277,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         audioRef,
         analyser
     }}>
+      <audio id="audio-player-core" />
       {children}
     </MusicContext.Provider>
   );

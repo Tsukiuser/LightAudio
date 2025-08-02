@@ -13,6 +13,8 @@ import { ScrollArea } from './ui/scroll-area';
 import { SongItem } from './SongItem';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MusicVisualizer } from './MusicVisualizer';
+import { cn } from '@/lib/utils';
+import { StaticLogo } from './StaticLogo';
 
 export default function AudioPlayer() {
   const musicContext = useContext(MusicContext);
@@ -28,17 +30,12 @@ export default function AudioPlayer() {
 
   useEffect(() => {
     const audio = audioRef?.current;
-    if (audio) {
-      if (musicContext?.currentSong) {
+    if (audio && musicContext?.currentSong) {
         if (audio.src !== musicContext.currentSong.url) {
             audio.src = musicContext.currentSong.url;
             audio.load();
+            audio.play().catch(e => console.error("Playback initiation failed", e));
         }
-        audio.play().catch(e => console.error("Playback initiation failed", e));
-      } else {
-        audio.pause();
-        audio.src = "";
-      }
     }
   }, [musicContext?.currentSong, audioRef]);
 
@@ -70,7 +67,7 @@ export default function AudioPlayer() {
       audio.removeEventListener('ended', handleSkipForward);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [audioRef]);
+  }, []);
 
   useEffect(() => {
     if(audioRef?.current) {
@@ -122,12 +119,12 @@ export default function AudioPlayer() {
   const currentSongIndexInQueue = queue.findIndex(s => s.id === currentSong.id);
   const upNext = queue.slice(currentSongIndexInQueue + 1);
 
-  const playerBaseClass = "fixed left-0 right-0 z-20";
-  const playerPositionClass = isMobile ? "bottom-16" : "bottom-0";
+  const playerBaseClass = "fixed right-0 z-20";
+  const playerPositionClass = isMobile ? "bottom-16 left-0" : "bottom-0 left-64";
 
 
   return (
-    <div className={`${playerBaseClass} ${playerPositionClass}`}>
+    <div className={cn(playerBaseClass, playerPositionClass)}>
       <div className="bg-background/80 backdrop-blur-md border-t border-border/80 p-2 md:p-4">
         <div className="container mx-auto flex items-center gap-4">
             <Image
@@ -169,7 +166,9 @@ export default function AudioPlayer() {
           </div>
           
           <div className="hidden md:flex flex-1 w-1/3 items-center justify-end gap-2">
-            <MusicVisualizer />
+            <button onClick={() => alert('Equalizer feature coming soon!')}>
+              <StaticLogo />
+            </button>
             <Sheet>
                 <SheetTrigger asChild>
                     <Button variant="ghost" size="icon">
