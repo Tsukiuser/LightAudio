@@ -17,6 +17,7 @@ interface MusicContextType {
   addToQueue: (song: Song) => void;
   loadMusic: (directoryHandle: FileSystemDirectoryHandle) => Promise<void>;
   rescanMusic: () => Promise<void>;
+  clearLibrary: () => void;
   hasAccess: boolean;
   isLoading: boolean;
 }
@@ -24,6 +25,11 @@ interface MusicContextType {
 export const MusicContext = createContext<MusicContextType | null>(null);
 
 const PERMISSION_KEY = 'lightaudio_music_folder_permission';
+
+// This is a simplified way to handle permissions and the directory handle.
+// For a production app, you would use IndexedDB to store the directory handle
+// for a more persistent and robust solution.
+let storedHandle: FileSystemDirectoryHandle | null = null; 
 
 async function getPermission(directoryHandle: FileSystemDirectoryHandle) {
     const options = { mode: 'read' };
@@ -40,7 +46,6 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
   const [songs, setSongs] = useState<Song[]>([]);
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [queue, setQueue] = useState<Song[]>([]);
-  const [directoryHandle, setDirectoryHandle] = useState<FileSystemDirectoryHandle | null>(null);
   const [hasAccess, setHasAccess] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
@@ -56,10 +61,8 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     }
 
     setHasAccess(true);
-    setDirectoryHandle(dirHandle);
-    
-    // @ts-ignore
-    localStorage.setItem(PERMISSION_KEY, 'granted'); // Simplified for this example. For production, you'd store the handle in IndexedDB.
+    storedHandle = dirHandle; // Store the handle
+    localStorage.setItem(PERMISSION_KEY, 'granted');
 
     const newSongs: Song[] = [];
     
@@ -104,15 +107,17 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     
     setSongs(newSongs);
     setIsLoading(false);
-    toast({
-        title: 'Library Updated',
-        description: `Found ${newSongs.length} songs.`,
-    })
+    if (newSongs.length > 0) {
+        toast({
+            title: 'Library Updated',
+            description: `Found ${newSongs.length} songs.`,
+        })
+    }
   }, [toast]);
 
   const rescanMusic = useCallback(async () => {
-    if (directoryHandle) {
-        await loadMusicFromHandle(directoryHandle);
+    if (storedHandle) {
+        await loadMusicFromHandle(storedHandle);
     } else {
         toast({
             title: 'No Folder Selected',
@@ -120,27 +125,34 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
             variant: 'destructive'
         })
     }
-  }, [directoryHandle, loadMusicFromHandle, toast]);
+  }, [loadMusicFromHandle, toast]);
+  
+  const clearLibrary = () => {
+      setSongs([]);
+      setCurrentSong(null);
+      setQueue([]);
+      setHasAccess(false);
+      storedHandle = null;
+      localStorage.removeItem(PERMISSION_KEY);
+  }
 
   useEffect(() => {
-    // This is a simplified way to handle permissions. 
-    // In a real app, you would use IndexedDB to store the directory handle
-    // so you don't have to ask for permission every time.
-    const checkAccess = async () => {
+    // We only check for the permission key, but don't try to load anything.
+    // The handle is stored in-memory. If the user refreshes, they need to grant access again.
+    // This is a limitation of not using IndexedDB for the handle.
+    const checkAccess = () => {
         const hasPermission = localStorage.getItem(PERMISSION_KEY);
-        if (hasPermission !== 'granted') {
+        if (hasPermission !== 'granted' || !storedHandle) {
              setIsLoading(false);
              setHasAccess(false);
         } else {
-            // This is where you would retrieve the handle from IndexedDB.
-            // Since we don't have that, we just mark as not having access
-            // and the user will have to grant it again.
-            setIsLoading(false);
-            setHasAccess(false);
-            localStorage.removeItem(PERMISSION_KEY); // Force re-request
+             setHasAccess(true);
+             // If we have access, we should probably load the music
+             rescanMusic();
         }
     };
     checkAccess();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const playSong = (song: Song, newQueue?: Song[]) => {
@@ -192,6 +204,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         addToQueue,
         loadMusic: loadMusicFromHandle,
         rescanMusic,
+        clearLibrary,
         hasAccess,
         isLoading
     }}>

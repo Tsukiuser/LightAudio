@@ -6,7 +6,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { FolderSync, RefreshCw, Paintbrush } from 'lucide-react';
+import { FolderSync, RefreshCw, Paintbrush, Undo, Trash2, Palette } from 'lucide-react';
 import { MusicContext } from '@/context/MusicContext';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -60,12 +60,37 @@ export default function SettingsPage() {
     const handleColorChange = () => {
         localStorage.setItem('theme-background-color', backgroundColor);
         localStorage.setItem('theme-accent-color', accentColor);
-        // This is a bit of a hack to force a re-render of the ThemeManager
-        // A more robust solution might use a shared state context
         window.dispatchEvent(new Event('theme-changed'));
         toast({
             title: 'Theme Updated',
             description: 'Your new colors have been applied.',
+        });
+    }
+
+    const handleResetColors = () => {
+        localStorage.removeItem('theme-background-color');
+        localStorage.removeItem('theme-accent-color');
+        setBackgroundColor('#26262b');
+        setAccentColor('#9f8fbf');
+        window.dispatchEvent(new Event('theme-changed'));
+         toast({
+            title: 'Colors Reset',
+            description: 'The color theme has been reset to its default.',
+        });
+    }
+
+    const handleResetTheme = () => {
+        localStorage.setItem('theme', 'dark');
+        window.dispatchEvent(new Event('theme-changed'));
+        // We might need to force a re-render of the toggle if it doesn't listen to storage
+        window.location.reload(); 
+    }
+
+    const handleClearLibrary = () => {
+        musicContext?.clearLibrary();
+        toast({
+            title: 'Library Cleared',
+            description: 'Your music library has been cleared. Please grant folder access again.',
         });
     }
 
@@ -81,8 +106,11 @@ export default function SettingsPage() {
                 Customize the look and feel of the app.
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex flex-col sm:flex-row gap-2">
               <ThemeToggle />
+              <Button variant="outline" onClick={handleResetTheme}>
+                <Undo className="mr-2 h-4 w-4" /> Reset Theme
+              </Button>
             </CardContent>
           </Card>
 
@@ -95,7 +123,7 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
                 <div className="flex items-center gap-4">
-                    <Label htmlFor="background-color">Background</Label>
+                    <Label htmlFor="background-color" className="flex items-center gap-2"><Palette className="h-4 w-4"/>Background</Label>
                     <Input 
                         id="background-color" 
                         type="color" 
@@ -105,7 +133,7 @@ export default function SettingsPage() {
                     />
                 </div>
                  <div className="flex items-center gap-4">
-                    <Label htmlFor="accent-color">Accent</Label>
+                    <Label htmlFor="accent-color" className="flex items-center gap-2"><Palette className="h-4 w-4"/>Accent</Label>
                     <Input 
                         id="accent-color" 
                         type="color" 
@@ -114,10 +142,16 @@ export default function SettingsPage() {
                         className="w-16 p-1"
                     />
                 </div>
-                <Button onClick={handleColorChange}>
-                    <Paintbrush className="mr-2 h-4 w-4" />
-                    Apply Colors
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                    <Button onClick={handleColorChange}>
+                        <Paintbrush className="mr-2 h-4 w-4" />
+                        Apply Colors
+                    </Button>
+                    <Button variant="outline" onClick={handleResetColors}>
+                        <Undo className="mr-2 h-4 w-4" />
+                        Reset Colors
+                    </Button>
+                </div>
             </CardContent>
           </Card>
 
@@ -128,7 +162,7 @@ export default function SettingsPage() {
                 Manage the folder where your music is stored and scan for new content.
               </CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-col sm:flex-row gap-2">
+            <CardContent className="flex flex-wrap gap-2">
               <Button variant="outline" onClick={handleChangeFolder}>
                 <FolderSync className="mr-2 h-4 w-4" />
                 Change Music Folder
@@ -136,6 +170,10 @@ export default function SettingsPage() {
                <Button variant="outline" onClick={handleRescanFolder} disabled={!musicContext?.hasAccess}>
                 <RefreshCw className="mr-2 h-4 w-4" />
                 Rescan Folder
+              </Button>
+              <Button variant="destructive" onClick={handleClearLibrary} disabled={!musicContext?.hasAccess}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Clear Library
               </Button>
             </CardContent>
           </Card>
