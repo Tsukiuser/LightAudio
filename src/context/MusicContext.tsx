@@ -16,6 +16,7 @@ interface MusicContextType {
   playPreviousSong: () => void;
   addToQueue: (song: Song) => void;
   loadMusic: (directoryHandle: FileSystemDirectoryHandle) => Promise<void>;
+  rescanMusic: () => Promise<void>;
   hasAccess: boolean;
   isLoading: boolean;
 }
@@ -103,7 +104,23 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     
     setSongs(newSongs);
     setIsLoading(false);
-  }, []);
+    toast({
+        title: 'Library Updated',
+        description: `Found ${newSongs.length} songs.`,
+    })
+  }, [toast]);
+
+  const rescanMusic = useCallback(async () => {
+    if (directoryHandle) {
+        await loadMusicFromHandle(directoryHandle);
+    } else {
+        toast({
+            title: 'No Folder Selected',
+            description: 'Please select a music folder first.',
+            variant: 'destructive'
+        })
+    }
+  }, [directoryHandle, loadMusicFromHandle, toast]);
 
   useEffect(() => {
     // This is a simplified way to handle permissions. 
@@ -174,6 +191,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         playPreviousSong,
         addToQueue,
         loadMusic: loadMusicFromHandle,
+        rescanMusic,
         hasAccess,
         isLoading
     }}>

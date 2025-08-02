@@ -6,7 +6,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { FolderSync } from 'lucide-react';
+import { FolderSync, RefreshCw } from 'lucide-react';
 import { MusicContext } from '@/context/MusicContext';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -21,6 +21,10 @@ export default function SettingsPage() {
             // @ts-ignore
             const dirHandle = await window.showDirectoryPicker();
             await musicContext?.loadMusic(dirHandle);
+            toast({
+                title: 'Folder Changed',
+                description: 'Your music library is being updated.',
+            })
         } catch (error) {
            console.error('Error accessing directory:', error);
            if (error instanceof DOMException && error.name === 'AbortError') {
@@ -33,6 +37,14 @@ export default function SettingsPage() {
             })
            }
         }
+    }
+
+    const handleRescanFolder = async () => {
+        toast({
+            title: 'Rescanning Library',
+            description: 'Please wait while we look for new music.',
+        });
+        await musicContext?.rescanMusic();
     }
 
   return (
@@ -56,13 +68,17 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle>Storage</CardTitle>
               <CardDescription>
-                Manage the folder where your music is stored.
+                Manage the folder where your music is stored and scan for new content.
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex flex-col sm:flex-row gap-2">
               <Button variant="outline" onClick={handleChangeFolder}>
                 <FolderSync className="mr-2 h-4 w-4" />
                 Change Music Folder
+              </Button>
+               <Button variant="outline" onClick={handleRescanFolder} disabled={!musicContext?.hasAccess}>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Rescan Folder
               </Button>
             </CardContent>
           </Card>
