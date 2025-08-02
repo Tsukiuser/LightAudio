@@ -18,18 +18,17 @@ export default function AlbumDetailPage({ params }: { params: { artist: string; 
   const [album, setAlbum] = useState<Album | null>(null);
   const musicContext = useContext(MusicContext);
   
-  const artistName = decodeURIComponent(params.artist);
-  const albumName = decodeURIComponent(params.album);
-
   useEffect(() => {
     if (musicContext?.songs) {
+      const artistName = decodeURIComponent(params.artist);
+      const albumName = decodeURIComponent(params.album);
       const allAlbums = getAlbums(musicContext.songs);
       const foundAlbum = allAlbums.find(a => a.name === albumName && a.artist === artistName);
       if (foundAlbum) {
         setAlbum(foundAlbum);
       }
     }
-  }, [musicContext?.songs, albumName, artistName]);
+  }, [musicContext?.songs, params.album, params.artist]);
 
   const handlePlayAlbum = () => {
     if (album?.songs && album.songs.length > 0) {
