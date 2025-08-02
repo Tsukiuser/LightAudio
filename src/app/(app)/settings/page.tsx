@@ -9,6 +9,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { FolderSync } from 'lucide-react';
 import { MusicContext } from '@/context/MusicContext';
 import { useToast } from '@/hooks/use-toast';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 
 export default function SettingsPage() {
@@ -35,36 +36,38 @@ export default function SettingsPage() {
     }
 
   return (
-    <div className="container mx-auto max-w-3xl">
-      <PageHeader title="Settings" />
-      <div className="space-y-8 p-4 md:p-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Appearance</CardTitle>
-            <CardDescription>
-              Customize the look and feel of the app.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ThemeToggle />
-          </CardContent>
-        </Card>
+    <ScrollArea className="h-full">
+      <div className="container mx-auto max-w-3xl pb-8">
+        <PageHeader title="Settings" />
+        <div className="space-y-8 p-4 md:p-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Appearance</CardTitle>
+              <CardDescription>
+                Customize the look and feel of the app.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ThemeToggle />
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Storage</CardTitle>
-            <CardDescription>
-              Manage the folder where your music is stored.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button variant="outline" onClick={handleChangeFolder}>
-              <FolderSync className="mr-2 h-4 w-4" />
-              Change Music Folder
-            </Button>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Storage</CardTitle>
+              <CardDescription>
+                Manage the folder where your music is stored.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button variant="outline" onClick={handleChangeFolder}>
+                <FolderSync className="mr-2 h-4 w-4" />
+                Change Music Folder
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
-    </div>
+    </ScrollArea>
   );
 }

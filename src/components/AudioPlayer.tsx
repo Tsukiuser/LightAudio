@@ -11,6 +11,7 @@ import { formatDuration } from '@/lib/utils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from './ui/sheet';
 import { ScrollArea } from './ui/scroll-area';
 import { SongItem } from './SongItem';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export default function AudioPlayer() {
   const musicContext = useContext(MusicContext);
@@ -20,6 +21,7 @@ export default function AudioPlayer() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(0.5);
   const [isMuted, setIsMuted] = useState(false);
+  const isMobile = useIsMobile();
 
 
   useEffect(() => {
@@ -115,9 +117,12 @@ export default function AudioPlayer() {
   const currentSongIndexInQueue = queue.findIndex(s => s.id === currentSong.id);
   const upNext = queue.slice(currentSongIndexInQueue + 1);
 
+  const playerBaseClass = "fixed left-0 right-0 z-20";
+  const playerPositionClass = isMobile ? "bottom-16" : "bottom-0 ml-64";
+
 
   return (
-    <div className="fixed bottom-16 left-0 right-0 z-20">
+    <div className={`${playerBaseClass} ${playerPositionClass}`}>
       <div className="bg-background/80 backdrop-blur-md border-t border-border/80 p-2 md:p-4">
         <audio ref={audioRef} />
         <div className="container mx-auto flex items-center gap-4">
