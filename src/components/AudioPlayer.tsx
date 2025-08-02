@@ -50,22 +50,17 @@ export default function AudioPlayer() {
     }
 
     const setAudioTime = () => setProgress(audio.currentTime);
-
-    const handlePlay = () => musicContext?.setIsPlaying(true);
-    const handlePause = () => musicContext?.setIsPlaying(false);
+    
+    const onEnded = () => musicContext?.playNextSong();
 
     audio.addEventListener('loadeddata', setAudioData);
     audio.addEventListener('timeupdate', setAudioTime);
-    audio.addEventListener('play', handlePlay);
-    audio.addEventListener('pause', handlePause);
-    audio.addEventListener('ended', handleSkipForward);
+    audio.addEventListener('ended', onEnded);
 
     return () => {
       audio.removeEventListener('loadeddata', setAudioData);
       audio.removeEventListener('timeupdate', setAudioTime);
-      audio.removeEventListener('play', handlePlay);
-      audio.removeEventListener('pause', handlePause);
-      audio.removeEventListener('ended', handleSkipForward);
+      audio.removeEventListener('ended', onEnded);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -120,10 +115,10 @@ export default function AudioPlayer() {
   const currentSongIndexInQueue = queue.findIndex(s => s.id === currentSong.id);
   const upNext = queue.slice(currentSongIndexInQueue + 1);
 
-  const playerBaseClass = "fixed right-0 z-20 transition-[left] duration-300 ease-in-out";
+  const playerBaseClass = "fixed right-0 z-20 transition-[margin-left] duration-300 ease-in-out";
   const playerPositionClass = isMobile 
     ? "bottom-16 left-0" 
-    : "bottom-0 md:group-data-[sidebar-state=expanded]/body:left-64 md:group-data-[sidebar-state=collapsed]/body:left-12";
+    : "bottom-0 md:group-data-[sidebar-state=expanded]/body:ml-64 md:group-data-[sidebar-state=collapsed]/body:ml-12";
 
 
   return (

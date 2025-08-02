@@ -22,7 +22,6 @@ interface MusicContextType {
   hasAccess: boolean;
   isLoading: boolean;
   isPlaying: boolean;
-  setIsPlaying: (isPlaying: boolean) => void;
   audioRef: React.RefObject<HTMLAudioElement>;
   analyser: AnalyserNode | null;
   play: () => void;
@@ -60,7 +59,9 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
 
 
   useEffect(() => {
-    const audioElement = document.getElementById('audio-player-core') as HTMLAudioElement;
+    const audioElement = document.createElement('audio');
+    audioElement.id = 'audio-player-core';
+    document.body.appendChild(audioElement);
     audioRef.current = audioElement;
 
     const setupAudioContext = () => {
@@ -87,17 +88,27 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
 
     setupAudioContext();
 
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
+    
+    audioRef.current?.addEventListener('play', handlePlay);
+    audioRef.current?.addEventListener('pause', handlePause);
+
     const resumeAudioContext = () => {
         if (audioContextRef.current?.state === 'suspended') {
             audioContextRef.current.resume();
         }
     };
     
-    // Resume context on first user interaction
     document.addEventListener('click', resumeAudioContext, { once: true });
     
     return () => {
         document.removeEventListener('click', resumeAudioContext);
+        audioRef.current?.removeEventListener('play', handlePlay);
+        audioRef.current?.removeEventListener('pause', handlePause);
+        if (audioElement) {
+            document.body.removeChild(audioElement);
+        }
     }
   }, []);
 
@@ -234,14 +245,12 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
   const play = () => {
     if (audioRef.current) {
         audioRef.current.play().catch(e => console.error("Playback failed", e));
-        setIsPlaying(true);
     }
   }
 
   const pause = () => {
     if (audioRef.current) {
         audioRef.current.pause();
-        setIsPlaying(false);
     }
   }
 
@@ -249,8 +258,11 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     if (!currentSong || queue.length === 0) return;
     const currentIndex = queue.findIndex(s => s.id === currentSong.id);
     if (currentIndex === -1 || currentIndex === queue.length - 1) {
+      // End of queue or song not found, stop playback
+      if (audioRef.current) {
+        audioRef.current.src = "";
+      }
       setCurrentSong(null);
-      setIsPlaying(false);
       return;
     }
     setCurrentSong(queue[currentIndex + 1]);
@@ -283,7 +295,6 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         hasAccess,
         isLoading,
         isPlaying,
-        setIsPlaying,
         audioRef,
         analyser,
         play,
