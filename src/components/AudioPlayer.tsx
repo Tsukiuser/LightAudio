@@ -36,8 +36,9 @@ export default function AudioPlayer() {
             audio.load();
         }
         audio.play().catch(e => console.error("Playback initiation failed", e));
+        musicContext?.setIsPlaying(true);
     }
-  }, [musicContext?.currentSong, audioRef]);
+  }, [musicContext?.currentSong, audioRef, musicContext]);
 
   useEffect(() => {
     const audio = audioRef?.current;
@@ -122,7 +123,7 @@ export default function AudioPlayer() {
   const playerBaseClass = "fixed right-0 z-20 transition-[left] duration-300 ease-in-out";
   const playerPositionClass = isMobile 
     ? "bottom-16 left-0" 
-    : "bottom-0 group-data-[sidebar-state=expanded]/body:left-64 group-data-[sidebar-state=collapsed]/body:left-12";
+    : "bottom-0 md:group-data-[sidebar-state=expanded]/body:left-64 md:group-data-[sidebar-state=collapsed]/body:left-12";
 
 
   return (

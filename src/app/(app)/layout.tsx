@@ -17,11 +17,11 @@ function AppLayoutContent({
 
   return (
     <div 
-      className="relative flex min-h-screen flex-col bg-background"
+      className="group/body relative flex min-h-screen flex-col bg-background"
       data-sidebar-state={isMobile ? 'mobile' : sidebar.state}
     >
-      {!isMobile && <AppSidebar />}
-      <main className={`flex-1 transition-[margin-left] duration-300 ease-in-out ${!isMobile ? 'group-data-[sidebar-state=expanded]/body:ml-64 group-data-[sidebar-state=collapsed]/body:ml-12' : 'pb-36'}`}>
+      <AppSidebar />
+      <main className={`flex-1 transition-[margin-left] duration-300 ease-in-out ${isMobile ? 'pb-36' : 'md:group-data-[sidebar-state=expanded]/body:ml-64 md:group-data-[sidebar-state=collapsed]/body:ml-12'}`}>
         {children}
       </main>
       <AudioPlayer />

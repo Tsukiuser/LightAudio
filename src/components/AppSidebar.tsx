@@ -9,6 +9,8 @@ import { Separator } from './ui/separator';
 import { useContext } from 'react';
 import { MusicContext } from '@/context/MusicContext';
 import { StaticLogo } from './StaticLogo';
+import { Sidebar, useSidebar } from './ui/sidebar';
+
 
 const mainNavItems = [
   { href: '/', label: 'Home', icon: Home },
@@ -18,14 +20,17 @@ const mainNavItems = [
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const musicContext = useContext(MusicContext);
+  const { state } = useSidebar();
 
   return (
-    <div className="fixed top-0 left-0 h-screen w-64 bg-card text-card-foreground border-r flex flex-col z-30">
-        <div className="p-4">
-            <Link href="/" className="flex items-center gap-2">
+    <Sidebar>
+        <div className={cn("p-4 flex items-center justify-between", state === 'collapsed' && 'justify-center')}>
+            <Link href="/" className={cn("flex items-center gap-2", state === 'collapsed' && 'hidden')}>
                 <StaticLogo className="h-7 w-7" />
                 <h1 className="text-xl font-bold">LightAudio</h1>
+            </Link>
+             <Link href="/" className={cn("items-center gap-2", state === 'expanded' && 'hidden')}>
+                <StaticLogo className="h-7 w-7" />
             </Link>
         </div>
         <nav className="flex flex-col p-2">
@@ -37,13 +42,16 @@ export function AppSidebar() {
                 href={item.href}
                 className={cn(
                     'flex items-center gap-3 rounded-md p-2 text-sm font-medium transition-colors',
+                     state === 'collapsed' && 'justify-center',
                     isActive
                     ? 'bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
                 )}
                 >
                 <item.icon className="h-5 w-5" />
-                <span>{item.label}</span>
+                <span className={cn(state === 'collapsed' && 'hidden')}>
+                    {item.label}
+                </span>
                 </Link>
             );
             })}
@@ -52,7 +60,7 @@ export function AppSidebar() {
         <Separator className="my-2" />
 
         <div className="flex-1 p-2 space-y-2 overflow-y-auto">
-            <div className="flex justify-between items-center px-2">
+            <div className={cn("flex justify-between items-center px-2", state === 'collapsed' && 'hidden')}>
                 <h2 className="text-sm font-semibold text-muted-foreground">Playlists</h2>
                 <button className="text-muted-foreground hover:text-foreground">
                     <Plus className="h-5 w-5"/>
@@ -68,15 +76,18 @@ export function AppSidebar() {
                 href="/settings"
                 className={cn(
                     'flex items-center gap-3 rounded-md p-2 text-sm font-medium transition-colors',
+                    state === 'collapsed' && 'justify-center',
                     pathname === '/settings'
                     ? 'bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
                 )}
                 >
                 <Settings className="h-5 w-5" />
-                <span>Settings</span>
+                <span className={cn(state === 'collapsed' && 'hidden')}>
+                    Settings
+                </span>
             </Link>
         </div>
-    </div>
+    </Sidebar>
   );
 }
