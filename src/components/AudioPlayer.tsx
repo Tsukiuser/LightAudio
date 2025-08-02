@@ -119,8 +119,10 @@ export default function AudioPlayer() {
   const currentSongIndexInQueue = queue.findIndex(s => s.id === currentSong.id);
   const upNext = queue.slice(currentSongIndexInQueue + 1);
 
-  const playerBaseClass = "fixed right-0 z-20";
-  const playerPositionClass = isMobile ? "bottom-16 left-0" : "bottom-0 ml-64";
+  const playerBaseClass = "fixed right-0 z-20 transition-[left] duration-300 ease-in-out";
+  const playerPositionClass = isMobile 
+    ? "bottom-16 left-0" 
+    : "bottom-0 group-data-[sidebar-state=expanded]/body:left-64 group-data-[sidebar-state=collapsed]/body:left-12";
 
 
   return (
