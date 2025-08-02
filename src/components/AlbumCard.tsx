@@ -1,6 +1,8 @@
+
 import Image from 'next/image';
+import Link from 'next/link';
 import type { Album } from '@/lib/types';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface AlbumCardProps {
   album: Album;
@@ -8,7 +10,7 @@ interface AlbumCardProps {
 
 export function AlbumCard({ album }: AlbumCardProps) {
   return (
-    <div className="group relative cursor-pointer">
+    <Link href={`/album/${encodeURIComponent(album.artist)}/${encodeURIComponent(album.name)}`} className="group relative">
       <Card className="overflow-hidden transition-all group-hover:shadow-lg group-hover:shadow-primary/20">
         <CardContent className="p-0">
           <Image
@@ -25,6 +27,6 @@ export function AlbumCard({ album }: AlbumCardProps) {
         <h3 className="font-semibold text-foreground truncate">{album.name}</h3>
         <p className="text-sm text-muted-foreground truncate">{album.artist}</p>
       </div>
-    </div>
+    </Link>
   );
 }
