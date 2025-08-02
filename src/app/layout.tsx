@@ -8,7 +8,7 @@ import { MusicProvider } from '@/context/MusicContext';
 import { Inter } from 'next/font/google';
 
 export const metadata: Metadata = {
-  title: 'Local Beat',
+  title: 'LightAudio',
   description: 'Your local music, reimagined.',
 };
 

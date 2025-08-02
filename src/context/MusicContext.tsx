@@ -22,7 +22,7 @@ interface MusicContextType {
 
 export const MusicContext = createContext<MusicContextType | null>(null);
 
-const PERMISSION_KEY = 'localbeat_music_folder_permission';
+const PERMISSION_KEY = 'lightaudio_music_folder_permission';
 
 async function getPermission(directoryHandle: FileSystemDirectoryHandle) {
     const options = { mode: 'read' };

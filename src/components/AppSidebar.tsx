@@ -21,7 +21,7 @@ export function AppSidebar() {
         <div className="p-4">
             <Link href="/" className="flex items-center gap-2">
                 <Music2 className="h-6 w-6 text-primary"/>
-                <h1 className="text-xl font-bold">Local Beat</h1>
+                <h1 className="text-xl font-bold">LightAudio</h1>
             </Link>
         </div>
         <nav className="flex flex-col p-2">

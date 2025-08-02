@@ -60,7 +60,7 @@ export default function FileAccessManager({
         <div className="flex flex-col items-center animate-in fade-in-50 duration-1000">
           <Music className="h-16 w-16 text-primary mb-6" />
           <h1 className="text-3xl font-bold text-foreground mb-2 font-headline">
-            Welcome to Local Beat
+            Welcome to LightAudio
           </h1>
           <p className="text-muted-foreground max-w-md mb-8">
             To get started, please grant the application access to your music
