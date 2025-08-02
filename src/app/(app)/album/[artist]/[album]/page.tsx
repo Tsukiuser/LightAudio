@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Play } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { AlbumPlaceholder } from '@/components/AlbumPlaceholder';
 
 export default function AlbumDetailPage({ params }: { params: { artist: string; album: string } }) {
   const [album, setAlbum] = useState<Album | null>(null);
@@ -63,14 +64,20 @@ export default function AlbumDetailPage({ params }: { params: { artist: string; 
         <PageHeader title="" />
         <div className="px-4 md:px-6">
             <div className="flex flex-col md:flex-row items-center md:items-start gap-6 md:gap-8">
-                <Image 
-                    src={album.coverArt}
-                    alt={`Cover for ${album.name}`}
-                    width={256}
-                    height={256}
-                    className="h-48 w-48 md:h-64 md:w-64 rounded-lg shadow-lg object-cover flex-shrink-0"
-                    data-ai-hint="album cover"
-                />
+                <div className="h-48 w-48 md:h-64 md:w-64 rounded-lg shadow-lg flex-shrink-0">
+                    {album.coverArt ? (
+                        <Image 
+                            src={album.coverArt}
+                            alt={`Cover for ${album.name}`}
+                            width={256}
+                            height={256}
+                            className="h-full w-full object-cover rounded-lg"
+                            data-ai-hint="album cover"
+                        />
+                    ) : (
+                        <AlbumPlaceholder className="h-full w-full rounded-lg" />
+                    )}
+                </div>
                 <div className="flex flex-col items-center md:items-start text-center md:text-left pt-4">
                     <p className="text-sm font-medium text-muted-foreground uppercase">Album</p>
                     <h1 className="text-3xl md:text-5xl font-bold mt-1 text-foreground break-words">{album.name}</h1>

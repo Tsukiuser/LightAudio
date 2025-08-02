@@ -12,6 +12,10 @@ export function getAlbums(songs: Song[]): Album[] {
         songs: [],
       };
     }
+    // Prioritize existing cover art over null
+    if (song.coverArt && !acc[albumName].coverArt) {
+        acc[albumName].coverArt = song.coverArt;
+    }
     acc[albumName].songs.push(song);
     return acc;
   }, {} as Record<string, Album>);
@@ -39,9 +43,13 @@ export function getArtists(songs: Song[]): Artist[] {
         return acc;
     }, {} as Record<string, Record<string, Album>>);
 
-    return Object.entries(albumsByArtist).map(([artistName, albums]) => ({
+    return Object.entries(albumsByArtist).map(([artistName, albums]) => {
+      const allAlbums = Object.values(albums);
+      const albumWithCover = allAlbums.find(a => !!a.coverArt);
+      return {
         name: artistName,
-        coverArt: Object.values(albums)[0]?.coverArt || 'https://placehold.co/300x300.png',
-        albums: Object.values(albums)
-    }));
+        coverArt: albumWithCover ? albumWithCover.coverArt : null,
+        albums: allAlbums
+      }
+    });
 }

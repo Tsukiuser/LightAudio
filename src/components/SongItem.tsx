@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { StaticLogo } from './StaticLogo';
+import { AlbumPlaceholder } from './AlbumPlaceholder';
 
 
 interface SongItemProps {
@@ -46,15 +47,19 @@ export function SongItem({ song, queue }: SongItemProps) {
         className="flex items-center gap-4 flex-1 min-w-0 cursor-pointer"
         onClick={handlePlay}
       >
-        <div className="relative">
-          <Image
-            src={song.coverArt}
-            alt={`Cover for ${song.album}`}
-            width={40}
-            height={40}
-            className="aspect-square rounded-md object-cover"
-            data-ai-hint="album cover"
-          />
+        <div className="relative h-10 w-10 flex-shrink-0">
+          {song.coverArt ? (
+            <Image
+              src={song.coverArt}
+              alt={`Cover for ${song.album}`}
+              width={40}
+              height={40}
+              className="aspect-square rounded-md object-cover"
+              data-ai-hint="album cover"
+            />
+          ) : (
+             <AlbumPlaceholder className="rounded-md h-10 w-10"/>
+          )}
           {isCurrentSong && (
               <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-md">
                   <StaticLogo className="h-5 w-5 text-white" />

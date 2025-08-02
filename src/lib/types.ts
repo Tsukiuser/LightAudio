@@ -4,7 +4,7 @@ export type Song = {
   artist: string;
   album: string;
   duration: string;
-  coverArt: string;
+  coverArt: string | null;
   url: string;
   fileHandle?: FileSystemFileHandle;
 };
@@ -12,12 +12,12 @@ export type Song = {
 export type Album = {
   name: string;
   artist: string;
-  coverArt: string;
+  coverArt: string | null;
   songs: Song[];
 };
 
 export type Artist = {
   name: string;
-  coverArt: string;
+  coverArt: string | null;
   albums: Album[];
 };

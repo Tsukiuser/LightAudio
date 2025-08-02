@@ -12,9 +12,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from './ui
 import { ScrollArea } from './ui/scroll-area';
 import { SongItem } from './SongItem';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { MusicVisualizer } from './MusicVisualizer';
-import { cn } from '@/lib/utils';
 import { StaticLogo } from './StaticLogo';
+import { cn } from '@/lib/utils';
+import { AlbumPlaceholder } from './AlbumPlaceholder';
 
 export default function AudioPlayer() {
   const musicContext = useContext(MusicContext);
@@ -34,8 +34,8 @@ export default function AudioPlayer() {
         if (audio.src !== musicContext.currentSong.url) {
             audio.src = musicContext.currentSong.url;
             audio.load();
-            audio.play().catch(e => console.error("Playback initiation failed", e));
         }
+        audio.play().catch(e => console.error("Playback initiation failed", e));
     }
   }, [musicContext?.currentSong, audioRef]);
 
@@ -120,21 +120,27 @@ export default function AudioPlayer() {
   const upNext = queue.slice(currentSongIndexInQueue + 1);
 
   const playerBaseClass = "fixed right-0 z-20";
-  const playerPositionClass = isMobile ? "bottom-16 left-0" : "bottom-0 left-64";
+  const playerPositionClass = isMobile ? "bottom-16 left-0" : "bottom-0 ml-64";
 
 
   return (
     <div className={cn(playerBaseClass, playerPositionClass)}>
       <div className="bg-background/80 backdrop-blur-md border-t border-border/80 p-2 md:p-4">
         <div className="container mx-auto flex items-center gap-4">
-            <Image
-              src={currentSong.coverArt}
-              alt={currentSong.album}
-              width={56}
-              height={56}
-              className="h-10 w-10 md:h-14 md:w-14 rounded-md object-cover"
-              data-ai-hint="album cover"
-            />
+            <div className="h-10 w-10 md:h-14 md:w-14 flex-shrink-0">
+              {currentSong.coverArt ? (
+                <Image
+                  src={currentSong.coverArt}
+                  alt={currentSong.album}
+                  width={56}
+                  height={56}
+                  className="h-full w-full rounded-md object-cover"
+                  data-ai-hint="album cover"
+                />
+              ) : (
+                <AlbumPlaceholder className="rounded-md h-full w-full" />
+              )}
+            </div>
           <div className="flex-1 min-w-0 md:min-w-fit md:w-1/3">
             <p className="font-medium truncate text-foreground">{currentSong.title}</p>
             <p className="text-sm text-muted-foreground truncate">{currentSong.artist}</p>

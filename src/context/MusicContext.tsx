@@ -59,15 +59,11 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     // This effect runs once on mount to set up the audio player and context.
-    
-    // Assign the audio element to the ref
-    if (!audioRef.current) {
-        const audioElement = document.getElementById('audio-player-core') as HTMLAudioElement;
-        if (audioElement) {
-            audioRef.current = audioElement;
-            audioRef.current.crossOrigin = 'anonymous';
-        }
-    }
+    const audioElement = new Audio();
+    audioElement.id = 'audio-player-core';
+    document.body.appendChild(audioElement);
+    audioRef.current = audioElement;
+    audioRef.current.crossOrigin = 'anonymous';
 
     const setupAudioContext = () => {
         if (audioRef.current && !audioContextRef.current) {
@@ -104,6 +100,9 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     
     return () => {
         document.removeEventListener('click', resumeAudioContext);
+        if (audioElement) {
+            audioElement.remove();
+        }
     }
   }, []);
 
@@ -149,7 +148,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
                 
                 const coverArt = metadata.common.picture?.[0] 
                     ? `data:${metadata.common.picture[0].format};base64,${metadata.common.picture[0].data.toString('base64')}`
-                    : 'https://placehold.co/300x300.png';
+                    : null;
 
                 newSongs.push({
                     id: fileHandle.name + '-' + file.size, // simple unique id
@@ -221,6 +220,9 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
   }, [loadMusicFromHandle]);
 
   const playSong = (song: Song, newQueue?: Song[]) => {
+    if (audioContextRef.current?.state === 'suspended') {
+      audioContextRef.current.resume();
+    }
     setCurrentSong(song);
     setIsPlaying(true);
     if (newQueue) {
@@ -277,7 +279,6 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         audioRef,
         analyser
     }}>
-      <audio id="audio-player-core" />
       {children}
     </MusicContext.Provider>
   );
