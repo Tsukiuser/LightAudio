@@ -4,12 +4,13 @@
 import { useContext } from 'react';
 import Image from 'next/image';
 import type { Song } from '@/lib/types';
-import { MoreHorizontal, Music, ListPlus } from 'lucide-react';
+import { MoreHorizontal, ListPlus } from 'lucide-react';
 import { Button } from './ui/button';
 import { MusicContext } from '@/context/MusicContext';
 import { cn } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
+import { StaticLogo } from './StaticLogo';
 
 
 interface SongItemProps {
@@ -56,7 +57,7 @@ export function SongItem({ song, queue }: SongItemProps) {
           />
           {isCurrentSong && (
               <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-md">
-                  <Music className="h-5 w-5 text-white" />
+                  <StaticLogo className="h-5 w-5 text-white" />
               </div>
           )}
         </div>

@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { Separator } from './ui/separator';
 import { useContext } from 'react';
 import { MusicContext } from '@/context/MusicContext';
-import { MusicVisualizer } from './MusicVisualizer';
+import { StaticLogo } from './StaticLogo';
 
 const mainNavItems = [
   { href: '/', label: 'Home', icon: Home },
@@ -24,7 +24,7 @@ export function AppSidebar() {
     <div className="fixed top-0 left-0 h-screen w-64 bg-card text-card-foreground border-r flex flex-col z-30">
         <div className="p-4">
             <Link href="/" className="flex items-center gap-2">
-                <MusicVisualizer />
+                <StaticLogo className="h-7 w-7" />
                 <h1 className="text-xl font-bold">LightAudio</h1>
             </Link>
         </div>

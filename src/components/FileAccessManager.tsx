@@ -3,9 +3,9 @@
 
 import { useContext } from 'react';
 import { Button } from '@/components/ui/button';
-import { Music } from 'lucide-react';
 import { MusicContext } from '@/context/MusicContext';
 import { useToast } from '@/hooks/use-toast';
+import { StaticLogo } from './StaticLogo';
 
 export default function FileAccessManager({
   children,
@@ -38,7 +38,7 @@ export default function FileAccessManager({
     return (
        <div className="flex h-screen w-full flex-col items-center justify-center bg-background p-4 text-center">
         <div className="flex flex-col items-center animate-in fade-in-50 duration-1000">
-          <Music className="h-16 w-16 text-primary mb-6 animate-pulse" />
+          <StaticLogo className="h-16 w-16 mb-6" />
           <h1 className="text-3xl font-bold text-foreground mb-2 font-headline">
             Loading Library
           </h1>
@@ -54,7 +54,7 @@ export default function FileAccessManager({
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-background p-4 text-center">
         <div className="flex flex-col items-center animate-in fade-in-50 duration-1000">
-          <Music className="h-16 w-16 text-primary mb-6" />
+          <StaticLogo className="h-16 w-16 text-primary mb-6" />
           <h1 className="text-3xl font-bold text-foreground mb-2 font-headline">
             Welcome to LightAudio
           </h1>
