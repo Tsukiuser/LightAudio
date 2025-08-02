@@ -26,9 +26,12 @@ export default function AlbumDetailPage({ params }: { params: { artist: string; 
       const foundAlbum = allAlbums.find(a => a.name === albumName && a.artist === artistName);
       if (foundAlbum) {
         setAlbum(foundAlbum);
+      } else {
+        // If the album is not found after songs are loaded, it's a 404
+        notFound();
       }
     }
-  }, [musicContext?.songs, params.album, params.artist]);
+  }, [musicContext?.songs, params.artist, params.album, params]);
 
   const handlePlayAlbum = () => {
     if (album?.songs && album.songs.length > 0) {
@@ -36,7 +39,7 @@ export default function AlbumDetailPage({ params }: { params: { artist: string; 
     }
   }
 
-  if (musicContext?.isLoading) {
+  if (musicContext?.isLoading || !album) {
     return (
       <div className="container mx-auto max-w-7xl px-0">
         <PageHeader title="" />
@@ -52,19 +55,6 @@ export default function AlbumDetailPage({ params }: { params: { artist: string; 
         </div>
       </div>
     );
-  }
-  
-  if (!album) {
-    // We could show a loading state until the album is found or timeout.
-    // For now, if it's not immediately available post-loading, we assume it's not found.
-     if (!musicContext?.isLoading) {
-       // A small delay to allow context to populate, then show not found.
-       // A better solution would be a more robust loading state.
-       setTimeout(() => {
-         if(!album) notFound();
-       }, 500);
-     }
-    return null; // Or a loading skeleton
   }
 
   return (
