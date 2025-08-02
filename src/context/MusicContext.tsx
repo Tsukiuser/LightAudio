@@ -59,7 +59,14 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const setupAudioContext = () => {
-        if (!audioRef.current) return;
+        // We create a new audio element here and append it to the body
+        // This ensures it is never removed from the DOM
+        if (!audioRef.current) {
+            (audioRef as React.MutableRefObject<HTMLAudioElement | null>).current = new Audio();
+            audioRef.current.crossOrigin = 'anonymous';
+            document.body.appendChild(audioRef.current);
+        }
+        
         if (!audioContextRef.current) {
             try {
                 const context = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -81,10 +88,8 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
-    // We can set it up once the component mounts
     setupAudioContext();
 
-    // Resume context on user interaction
     const resumeAudioContext = () => {
         if (audioContextRef.current?.state === 'suspended') {
             audioContextRef.current.resume();
@@ -95,8 +100,10 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     
     return () => {
         document.removeEventListener('click', resumeAudioContext);
-        sourceNodeRef.current?.disconnect();
-        audioContextRef.current?.close();
+        // Do not disconnect or close context here to keep it alive
+        if (audioRef.current) {
+            document.body.removeChild(audioRef.current);
+        }
     }
   }, []);
 
@@ -222,8 +229,6 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
       if(songIndex !== -1) {
         setQueue(songs.slice(songIndex));
       } else {
-        // If the song is not in the main list, just create a queue with it.
-        // This might happen if playing from search results that aren't in a specific album view.
         setQueue([song]);
       }
     }
@@ -271,8 +276,6 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         audioRef,
         analyser
     }}>
-      {/* We render the audio element here at the root so the ref is persistent */}
-      <audio ref={audioRef} crossOrigin="anonymous"/>
       {children}
     </MusicContext.Provider>
   );

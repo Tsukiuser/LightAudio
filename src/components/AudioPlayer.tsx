@@ -28,19 +28,18 @@ export default function AudioPlayer() {
 
   useEffect(() => {
     const audio = audioRef?.current;
-    if (musicContext?.currentSong && audio) {
+    if (audio) {
+      if (musicContext?.currentSong) {
         if (audio.src !== musicContext.currentSong.url) {
             audio.src = musicContext.currentSong.url;
             audio.load();
         }
         audio.play().catch(e => console.error("Playback initiation failed", e));
-        musicContext.setIsPlaying(true);
-    } else if (!musicContext?.currentSong && audio) {
-      audio.pause();
-      audio.src = "";
-      musicContext.setIsPlaying(false);
+      } else {
+        audio.pause();
+        audio.src = "";
+      }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [musicContext?.currentSong, audioRef]);
 
   useEffect(() => {
@@ -130,7 +129,6 @@ export default function AudioPlayer() {
   return (
     <div className={`${playerBaseClass} ${playerPositionClass}`}>
       <div className="bg-background/80 backdrop-blur-md border-t border-border/80 p-2 md:p-4">
-        {/* The main audio tag is now in the provider */}
         <div className="container mx-auto flex items-center gap-4">
             <Image
               src={currentSong.coverArt}
