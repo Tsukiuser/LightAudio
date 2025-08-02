@@ -1,7 +1,7 @@
 
 'use client';
 
-import { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { createContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import type { Song } from '@/lib/types';
 // @ts-ignore
 import * as music from 'music-metadata-browser';
@@ -21,6 +21,9 @@ interface MusicContextType {
   clearLibrary: () => void;
   hasAccess: boolean;
   isLoading: boolean;
+  isPlaying: boolean;
+  setIsPlaying: (isPlaying: boolean) => void;
+  audioRef: React.RefObject<HTMLAudioElement>;
 }
 
 export const MusicContext = createContext<MusicContextType | null>(null);
@@ -32,8 +35,6 @@ async function verifyPermission(directoryHandle: FileSystemDirectoryHandle) {
     if ((await directoryHandle.queryPermission(options)) === 'granted') {
         return true;
     }
-    // If permission is not granted, we need to request it again.
-    // This will prompt the user.
     if ((await directoryHandle.requestPermission(options)) === 'granted') {
         return true;
     }
@@ -46,6 +47,8 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
   const [queue, setQueue] = useState<Song[]>([]);
   const [hasAccess, setHasAccess] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
 
   const loadMusicFromHandle = useCallback(async (dirHandle: FileSystemDirectoryHandle, isInitialLoad = false) => {
@@ -166,7 +169,6 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     if (newQueue) {
       setQueue(newQueue);
     } else {
-      // If no queue is provided, play the single song.
       const songIndex = songs.findIndex(s => s.id === song.id);
       if(songIndex !== -1) {
         setQueue(songs.slice(songIndex));
@@ -180,8 +182,8 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     if (!currentSong || queue.length === 0) return;
     const currentIndex = queue.findIndex(s => s.id === currentSong.id);
     if (currentIndex === -1 || currentIndex === queue.length - 1) {
-      // It's the last song, so stop playback
       setCurrentSong(null);
+      setIsPlaying(false);
       return;
     }
     setCurrentSong(queue[currentIndex + 1]);
@@ -212,8 +214,13 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         rescanMusic,
         clearLibrary,
         hasAccess,
-        isLoading
+        isLoading,
+        isPlaying,
+        setIsPlaying,
+        audioRef,
     }}>
+      {/* We render the audio element here at the root so the ref is persistent */}
+      <audio ref={audioRef} crossOrigin="anonymous"/>
       {children}
     </MusicContext.Provider>
   );

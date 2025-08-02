@@ -3,9 +3,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Search, Library, Settings, Music2, Plus } from 'lucide-react';
+import { Home, Search, Library, Settings, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Separator } from './ui/separator';
+import { useContext } from 'react';
+import { MusicContext } from '@/context/MusicContext';
+import { MusicVisualizer } from './MusicVisualizer';
 
 const mainNavItems = [
   { href: '/', label: 'Home', icon: Home },
@@ -15,12 +18,13 @@ const mainNavItems = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const musicContext = useContext(MusicContext);
 
   return (
     <div className="fixed top-0 left-0 h-screen w-64 bg-card text-card-foreground border-r flex flex-col z-30">
         <div className="p-4">
             <Link href="/" className="flex items-center gap-2">
-                <Music2 className="h-6 w-6 text-primary"/>
+                <MusicVisualizer audioRef={musicContext?.audioRef} isPlaying={musicContext?.isPlaying ?? false}/>
                 <h1 className="text-xl font-bold">LightAudio</h1>
             </Link>
         </div>

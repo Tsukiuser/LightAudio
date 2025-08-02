@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useContext, useRef, useEffect, useState } from 'react';
+import { useContext, useEffect, useState, useRef } from 'react';
 import Image from 'next/image';
 import { MusicContext } from '@/context/MusicContext';
 import { Slider } from './ui/slider';
@@ -16,32 +16,32 @@ import { MusicVisualizer } from './MusicVisualizer';
 
 export default function AudioPlayer() {
   const musicContext = useContext(MusicContext);
-  const audioRef = useRef<HTMLAudioElement>(null);
+  const audioRef = musicContext?.audioRef;
+  const isPlaying = musicContext?.isPlaying ?? false;
+
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(0.5);
   const [isMuted, setIsMuted] = useState(false);
   const isMobile = useIsMobile();
 
 
   useEffect(() => {
-    if (musicContext?.currentSong && audioRef.current) {
-      // Prevent re-loading the same song if the queue is just updated
+    if (musicContext?.currentSong && audioRef?.current) {
       const currentSrc = audioRef.current.src;
       if (currentSrc !== musicContext.currentSong.url && !(currentSrc.endsWith(musicContext.currentSong.url))) {
          audioRef.current.src = musicContext.currentSong.url;
       }
-      audioRef.current.play().then(() => setIsPlaying(true)).catch(e => console.error("Playback failed", e));
-    } else if (!musicContext?.currentSong && audioRef.current) {
+      audioRef.current.play().then(() => musicContext.setIsPlaying(true)).catch(e => console.error("Playback failed", e));
+    } else if (!musicContext?.currentSong && audioRef?.current) {
       audioRef.current.pause();
       audioRef.current.src = "";
-      setIsPlaying(false);
+      musicContext.setIsPlaying(false);
     }
-  }, [musicContext?.currentSong]);
+  }, [musicContext, audioRef]);
 
   useEffect(() => {
-    const audio = audioRef.current;
+    const audio = audioRef?.current;
     if (!audio) return;
     
     const setAudioData = () => {
@@ -51,40 +51,43 @@ export default function AudioPlayer() {
 
     const setAudioTime = () => setProgress(audio.currentTime);
 
+    const handlePlay = () => musicContext?.setIsPlaying(true);
+    const handlePause = () => musicContext?.setIsPlaying(false);
+
     audio.addEventListener('loadeddata', setAudioData);
     audio.addEventListener('timeupdate', setAudioTime);
-    audio.addEventListener('play', () => setIsPlaying(true));
-    audio.addEventListener('pause', () => setIsPlaying(false));
+    audio.addEventListener('play', handlePlay);
+    audio.addEventListener('pause', handlePause);
     audio.addEventListener('ended', handleSkipForward);
 
     return () => {
       audio.removeEventListener('loadeddata', setAudioData);
       audio.removeEventListener('timeupdate', setAudioTime);
-      audio.removeEventListener('play', () => setIsPlaying(true));
-      audio.removeEventListener('pause', () => setIsPlaying(false));
+      audio.removeEventListener('play', handlePlay);
+      audio.removeEventListener('pause', handlePause);
       audio.removeEventListener('ended', handleSkipForward);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [musicContext?.currentSong]);
+  }, [audioRef, musicContext?.currentSong]);
 
   useEffect(() => {
-    if(audioRef.current) {
+    if(audioRef?.current) {
       audioRef.current.volume = isMuted ? 0 : volume;
     }
-  }, [volume, isMuted]);
+  }, [volume, isMuted, audioRef]);
 
   const togglePlayPause = () => {
     if (!musicContext?.currentSong) return;
     if (isPlaying) {
-      audioRef.current?.pause();
+      audioRef?.current?.pause();
     } else {
-      audioRef.current?.play();
+      audioRef?.current?.play();
     }
-    setIsPlaying(!isPlaying);
+    musicContext.setIsPlaying(!isPlaying);
   };
   
   const handleSeek = (value: number[]) => {
-    if (audioRef.current) {
+    if (audioRef?.current) {
       audioRef.current.currentTime = value[0];
       setProgress(value[0]);
     }
@@ -125,7 +128,7 @@ export default function AudioPlayer() {
   return (
     <div className={`${playerBaseClass} ${playerPositionClass}`}>
       <div className="bg-background/80 backdrop-blur-md border-t border-border/80 p-2 md:p-4">
-        <audio ref={audioRef} crossOrigin="anonymous"/>
+        {/* The main audio tag is now in the provider */}
         <div className="container mx-auto flex items-center gap-4">
             <Image
               src={currentSong.coverArt}
