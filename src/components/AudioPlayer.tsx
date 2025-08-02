@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useContext, useEffect, useState, useRef } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import Image from 'next/image';
 import { MusicContext } from '@/context/MusicContext';
 import { Slider } from './ui/slider';
@@ -171,7 +171,7 @@ export default function AudioPlayer() {
           </div>
           
           <div className="hidden md:flex flex-1 w-1/3 items-center justify-end gap-2">
-            <MusicVisualizer audioRef={audioRef} isPlaying={isPlaying} />
+            <MusicVisualizer />
             <Sheet>
                 <SheetTrigger asChild>
                     <Button variant="ghost" size="icon">

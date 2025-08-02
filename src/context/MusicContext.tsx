@@ -24,6 +24,7 @@ interface MusicContextType {
   isPlaying: boolean;
   setIsPlaying: (isPlaying: boolean) => void;
   audioRef: React.RefObject<HTMLAudioElement>;
+  analyser: AnalyserNode | null;
 }
 
 export const MusicContext = createContext<MusicContextType | null>(null);
@@ -50,6 +51,54 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
+
+  const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
+
+
+  useEffect(() => {
+    const setupAudioContext = () => {
+        if (!audioRef.current) return;
+        if (!audioContextRef.current) {
+            try {
+                const context = new (window.AudioContext || (window as any).webkitAudioContext)();
+                audioContextRef.current = context;
+                
+                const analyserNode = context.createAnalyser();
+                analyserNode.fftSize = 256;
+                setAnalyser(analyserNode);
+
+                if (!sourceNodeRef.current) {
+                    const source = context.createMediaElementSource(audioRef.current);
+                    sourceNodeRef.current = source;
+                    source.connect(analyserNode);
+                    analyserNode.connect(context.destination);
+                }
+            } catch (e) {
+                console.error("Web Audio API is not supported in this browser", e);
+            }
+        }
+    };
+
+    // We can set it up once the component mounts
+    setupAudioContext();
+
+    // Resume context on user interaction
+    const resumeAudioContext = () => {
+        if (audioContextRef.current?.state === 'suspended') {
+            audioContextRef.current.resume();
+        }
+        document.removeEventListener('click', resumeAudioContext);
+    };
+    document.addEventListener('click', resumeAudioContext);
+    
+    return () => {
+        document.removeEventListener('click', resumeAudioContext);
+        sourceNodeRef.current?.disconnect();
+        audioContextRef.current?.close();
+    }
+  }, []);
 
   const loadMusicFromHandle = useCallback(async (dirHandle: FileSystemDirectoryHandle, isInitialLoad = false) => {
     if (!isInitialLoad) setIsLoading(true);
@@ -220,6 +269,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         isPlaying,
         setIsPlaying,
         audioRef,
+        analyser
     }}>
       {/* We render the audio element here at the root so the ref is persistent */}
       <audio ref={audioRef} crossOrigin="anonymous"/>

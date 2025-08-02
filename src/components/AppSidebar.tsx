@@ -24,7 +24,7 @@ export function AppSidebar() {
     <div className="fixed top-0 left-0 h-screen w-64 bg-card text-card-foreground border-r flex flex-col z-30">
         <div className="p-4">
             <Link href="/" className="flex items-center gap-2">
-                <MusicVisualizer audioRef={musicContext?.audioRef} isPlaying={musicContext?.isPlaying ?? false}/>
+                <MusicVisualizer />
                 <h1 className="text-xl font-bold">LightAudio</h1>
             </Link>
         </div>

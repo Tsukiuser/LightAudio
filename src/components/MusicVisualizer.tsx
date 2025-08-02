@@ -3,60 +3,33 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
+import { useContext } from 'react';
+import { MusicContext } from '@/context/MusicContext';
 
 interface MusicVisualizerProps {
-    audioRef: React.RefObject<HTMLAudioElement>;
-    isPlaying: boolean;
+    // The props are no longer needed as we get everything from context
 }
 
 const NUM_BARS = 5;
 
-export function MusicVisualizer({ audioRef, isPlaying }: MusicVisualizerProps) {
+export function MusicVisualizer(props: MusicVisualizerProps) {
+    const musicContext = useContext(MusicContext);
+    const isPlaying = musicContext?.isPlaying ?? false;
+    const analyser = musicContext?.analyser;
+
     const [barHeights, setBarHeights] = useState(new Array(NUM_BARS).fill(0));
-    const audioContextRef = useRef<AudioContext | null>(null);
-    const analyserRef = useRef<AnalyserNode | null>(null);
-    const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
     const animationFrameId = useRef<number>(0);
 
     useEffect(() => {
-        if (!audioRef.current) return;
-        
-        const setupAudioContext = () => {
-            if (!audioContextRef.current) {
-                try {
-                    audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-                } catch (e) {
-                    console.error("Web Audio API is not supported in this browser");
-                    return;
-                }
-            }
-
-            if (!analyserRef.current) {
-                 analyserRef.current = audioContextRef.current.createAnalyser();
-                 analyserRef.current.fftSize = 256;
-            }
-
-            if (!sourceRef.current) {
-                sourceRef.current = audioContextRef.current.createMediaElementSource(audioRef.current);
-                sourceRef.current.connect(analyserRef.current);
-                analyserRef.current.connect(audioContextRef.current.destination);
-            }
-        };
-
-        // Delay context creation until user interacts (isPlaying)
-        if (isPlaying && !audioContextRef.current) {
-             setupAudioContext();
-        }
-
         const animate = () => {
-            if (!analyserRef.current) {
+            if (!analyser) {
                 cancelAnimationFrame(animationFrameId.current);
                 return;
             }
 
-            const bufferLength = analyserRef.current.frequencyBinCount;
+            const bufferLength = analyser.frequencyBinCount;
             const dataArray = new Uint8Array(bufferLength);
-            analyserRef.current.getByteFrequencyData(dataArray);
+            analyser.getByteFrequencyData(dataArray);
 
             const newBarHeights = [];
             const barWidth = Math.floor(bufferLength / NUM_BARS);
@@ -74,10 +47,7 @@ export function MusicVisualizer({ audioRef, isPlaying }: MusicVisualizerProps) {
             animationFrameId.current = requestAnimationFrame(animate);
         };
 
-        if (isPlaying) {
-             if (audioContextRef.current?.state === 'suspended') {
-                audioContextRef.current.resume();
-            }
+        if (isPlaying && analyser) {
             animate();
         } else {
             cancelAnimationFrame(animationFrameId.current);
@@ -88,15 +58,7 @@ export function MusicVisualizer({ audioRef, isPlaying }: MusicVisualizerProps) {
             cancelAnimationFrame(animationFrameId.current);
         };
 
-    }, [isPlaying, audioRef]);
-    
-    // When the component unmounts, disconnect the audio graph to free up resources
-    useEffect(() => {
-        return () => {
-            sourceRef.current?.disconnect();
-            analyserRef.current?.disconnect();
-        }
-    },[]);
+    }, [isPlaying, analyser]);
 
     return (
         <div className="flex items-end justify-center h-6 w-10 gap-1">
@@ -113,4 +75,3 @@ export function MusicVisualizer({ audioRef, isPlaying }: MusicVisualizerProps) {
         </div>
     );
 }
-
