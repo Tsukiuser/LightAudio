@@ -29,16 +29,20 @@ export default function AudioPlayer() {
   useEffect(() => {
     if (musicContext?.currentSong && audioRef?.current) {
       const currentSrc = audioRef.current.src;
-      if (currentSrc !== musicContext.currentSong.url && !(currentSrc.endsWith(musicContext.currentSong.url))) {
+      // Check if the src is a blob URL and if it needs updating
+      if (currentSrc !== musicContext.currentSong.url && !(currentSrc.endsWith(musicContext.currentSong.url.split('/').pop()!))) {
          audioRef.current.src = musicContext.currentSong.url;
+         audioRef.current.load(); // Explicitly load the new source
       }
-      audioRef.current.play().then(() => musicContext.setIsPlaying(true)).catch(e => console.error("Playback failed", e));
+      // Autoplay is handled by the playSong function in context now.
     } else if (!musicContext?.currentSong && audioRef?.current) {
       audioRef.current.pause();
       audioRef.current.src = "";
       musicContext.setIsPlaying(false);
     }
-  }, [musicContext, audioRef]);
+  // The dependency array is intentionally limited to watch for song changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [musicContext?.currentSong]);
 
   useEffect(() => {
     const audio = audioRef?.current;
@@ -54,11 +58,19 @@ export default function AudioPlayer() {
     const handlePlay = () => musicContext?.setIsPlaying(true);
     const handlePause = () => musicContext?.setIsPlaying(false);
 
+    const handleCanPlay = () => {
+        if(audio.autoplay) {
+            audio.play().catch(e => console.error("Playback failed", e));
+        }
+    }
+
     audio.addEventListener('loadeddata', setAudioData);
     audio.addEventListener('timeupdate', setAudioTime);
     audio.addEventListener('play', handlePlay);
     audio.addEventListener('pause', handlePause);
     audio.addEventListener('ended', handleSkipForward);
+    // This event ensures playback starts after the track is ready.
+    audio.addEventListener('canplay', handleCanPlay);
 
     return () => {
       audio.removeEventListener('loadeddata', setAudioData);
@@ -66,9 +78,10 @@ export default function AudioPlayer() {
       audio.removeEventListener('play', handlePlay);
       audio.removeEventListener('pause', handlePause);
       audio.removeEventListener('ended', handleSkipForward);
+      audio.removeEventListener('canplay', handleCanPlay);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [audioRef, musicContext?.currentSong]);
+  }, [audioRef]);
 
   useEffect(() => {
     if(audioRef?.current) {
@@ -83,7 +96,7 @@ export default function AudioPlayer() {
     } else {
       audioRef?.current?.play();
     }
-    musicContext.setIsPlaying(!isPlaying);
+    // State is toggled by the play/pause event listeners on the audio element
   };
   
   const handleSeek = (value: number[]) => {
@@ -122,7 +135,7 @@ export default function AudioPlayer() {
   const upNext = queue.slice(currentSongIndexInQueue + 1);
 
   const playerBaseClass = "fixed left-0 right-0 z-20";
-  const playerPositionClass = isMobile ? "bottom-16" : "bottom-0 ml-64";
+  const playerPositionClass = isMobile ? "bottom-16" : "bottom-0";
 
 
   return (

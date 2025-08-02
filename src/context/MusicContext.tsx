@@ -176,6 +176,9 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         setQueue([song]);
       }
     }
+    if (audioRef.current) {
+        audioRef.current.autoplay = true;
+    }
   };
 
   const playNextSong = () => {
