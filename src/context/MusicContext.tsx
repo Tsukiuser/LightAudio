@@ -173,11 +173,10 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
       if(songIndex !== -1) {
         setQueue(songs.slice(songIndex));
       } else {
+        // If the song is not in the main list, just create a queue with it.
+        // This might happen if playing from search results that aren't in a specific album view.
         setQueue([song]);
       }
-    }
-    if (audioRef.current) {
-        audioRef.current.autoplay = true;
     }
   };
 

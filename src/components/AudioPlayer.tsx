@@ -27,22 +27,21 @@ export default function AudioPlayer() {
 
 
   useEffect(() => {
-    if (musicContext?.currentSong && audioRef?.current) {
-      const currentSrc = audioRef.current.src;
-      // Check if the src is a blob URL and if it needs updating
-      if (currentSrc !== musicContext.currentSong.url && !(currentSrc.endsWith(musicContext.currentSong.url.split('/').pop()!))) {
-         audioRef.current.src = musicContext.currentSong.url;
-         audioRef.current.load(); // Explicitly load the new source
-      }
-      // Autoplay is handled by the playSong function in context now.
-    } else if (!musicContext?.currentSong && audioRef?.current) {
-      audioRef.current.pause();
-      audioRef.current.src = "";
+    const audio = audioRef?.current;
+    if (musicContext?.currentSong && audio) {
+        if (audio.src !== musicContext.currentSong.url) {
+            audio.src = musicContext.currentSong.url;
+            audio.load();
+        }
+        audio.play().catch(e => console.error("Playback initiation failed", e));
+        musicContext.setIsPlaying(true);
+    } else if (!musicContext?.currentSong && audio) {
+      audio.pause();
+      audio.src = "";
       musicContext.setIsPlaying(false);
     }
-  // The dependency array is intentionally limited to watch for song changes.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [musicContext?.currentSong]);
+  }, [musicContext?.currentSong, audioRef]);
 
   useEffect(() => {
     const audio = audioRef?.current;
@@ -58,19 +57,11 @@ export default function AudioPlayer() {
     const handlePlay = () => musicContext?.setIsPlaying(true);
     const handlePause = () => musicContext?.setIsPlaying(false);
 
-    const handleCanPlay = () => {
-        if(audio.autoplay) {
-            audio.play().catch(e => console.error("Playback failed", e));
-        }
-    }
-
     audio.addEventListener('loadeddata', setAudioData);
     audio.addEventListener('timeupdate', setAudioTime);
     audio.addEventListener('play', handlePlay);
     audio.addEventListener('pause', handlePause);
     audio.addEventListener('ended', handleSkipForward);
-    // This event ensures playback starts after the track is ready.
-    audio.addEventListener('canplay', handleCanPlay);
 
     return () => {
       audio.removeEventListener('loadeddata', setAudioData);
@@ -78,7 +69,6 @@ export default function AudioPlayer() {
       audio.removeEventListener('play', handlePlay);
       audio.removeEventListener('pause', handlePause);
       audio.removeEventListener('ended', handleSkipForward);
-      audio.removeEventListener('canplay', handleCanPlay);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audioRef]);
@@ -96,7 +86,6 @@ export default function AudioPlayer() {
     } else {
       audioRef?.current?.play();
     }
-    // State is toggled by the play/pause event listeners on the audio element
   };
   
   const handleSeek = (value: number[]) => {
