@@ -55,7 +55,7 @@ export default function SettingsPage() {
             <CardTitle>Storage</CardTitle>
             <CardDescription>
               Manage the folder where your music is stored.
-            </Description>
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <Button variant="outline" onClick={handleChangeFolder}>
