@@ -9,9 +9,11 @@ import * as music from 'music-metadata-browser';
 interface MusicContextType {
   songs: Song[];
   currentSong: Song | null;
-  playSong: (song: Song) => void;
+  queue: Song[];
+  playSong: (song: Song, newQueue?: Song[]) => void;
   playNextSong: () => void;
   playPreviousSong: () => void;
+  addToQueue: (song: Song) => void;
   loadMusic: (directoryHandle: FileSystemDirectoryHandle) => Promise<void>;
   hasAccess: boolean;
   isLoading: boolean;
@@ -35,6 +37,7 @@ async function getPermission(directoryHandle: FileSystemDirectoryHandle) {
 export const MusicProvider = ({ children }: { children: ReactNode }) => {
   const [songs, setSongs] = useState<Song[]>([]);
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
+  const [queue, setQueue] = useState<Song[]>([]);
   const [directoryHandle, setDirectoryHandle] = useState<FileSystemDirectoryHandle | null>(null);
   const [hasAccess, setHasAccess] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -121,31 +124,48 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     checkAccess();
   }, []);
 
-  const playSong = (song: Song) => {
+  const playSong = (song: Song, newQueue?: Song[]) => {
     setCurrentSong(song);
+    if (newQueue) {
+      setQueue(newQueue);
+    } else {
+      // If no queue is provided, create a default one starting with the current song.
+      const songIndex = songs.findIndex(s => s.id === song.id);
+      if(songIndex !== -1) {
+        setQueue(songs.slice(songIndex));
+      } else {
+        setQueue([song]);
+      }
+    }
   };
 
   const playNextSong = () => {
-    if (!currentSong || songs.length === 0) return;
-    const currentIndex = songs.findIndex(s => s.id === currentSong.id);
-    const nextIndex = (currentIndex + 1) % songs.length;
-    setCurrentSong(songs[nextIndex]);
+    if (!currentSong || queue.length === 0) return;
+    const currentIndex = queue.findIndex(s => s.id === currentSong.id);
+    const nextIndex = (currentIndex + 1) % queue.length;
+    setCurrentSong(queue[nextIndex]);
   };
 
   const playPreviousSong = () => {
-    if (!currentSong || songs.length === 0) return;
-    const currentIndex = songs.findIndex(s => s.id === currentSong.id);
-    const prevIndex = (currentIndex - 1 + songs.length) % songs.length;
-    setCurrentSong(songs[prevIndex]);
+    if (!currentSong || queue.length === 0) return;
+    const currentIndex = queue.findIndex(s => s.id === currentSong.id);
+    const prevIndex = (currentIndex - 1 + queue.length) % queue.length;
+    setCurrentSong(queue[prevIndex]);
   };
+
+  const addToQueue = (song: Song) => {
+    setQueue(prevQueue => [...prevQueue, song]);
+  }
 
   return (
     <MusicContext.Provider value={{ 
         songs, 
-        currentSong, 
+        currentSong,
+        queue, 
         playSong, 
         playNextSong,
         playPreviousSong,
+        addToQueue,
         loadMusic: loadMusicFromHandle,
         hasAccess,
         isLoading

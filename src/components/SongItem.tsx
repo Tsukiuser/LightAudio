@@ -9,19 +9,30 @@ import { Button } from './ui/button';
 import { MusicContext } from '@/context/MusicContext';
 import { cn } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useToast } from '@/hooks/use-toast';
 
 
 interface SongItemProps {
   song: Song;
+  queue?: Song[]; // Optional: The queue to set when this song is played
 }
 
-export function SongItem({ song }: SongItemProps) {
+export function SongItem({ song, queue }: SongItemProps) {
   const musicContext = useContext(MusicContext);
   const isCurrentSong = musicContext?.currentSong?.id === song.id;
+  const { toast } = useToast();
 
   const handlePlay = () => {
-    musicContext?.playSong(song);
+    musicContext?.playSong(song, queue);
   };
+
+  const handleAddToQueue = () => {
+    musicContext?.addToQueue(song);
+    toast({
+        title: "Added to queue",
+        description: `"${song.title}" has been added to the queue.`,
+    })
+  }
   
   return (
     <div 
@@ -62,7 +73,7 @@ export function SongItem({ song }: SongItemProps) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem>
+          <DropdownMenuItem onClick={handleAddToQueue}>
             <ListPlus className="mr-2 h-4 w-4" />
             Add to Queue
           </DropdownMenuItem>

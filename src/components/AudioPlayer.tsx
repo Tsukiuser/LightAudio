@@ -5,9 +5,12 @@ import { useContext, useRef, useEffect, useState } from 'react';
 import Image from 'next/image';
 import { MusicContext } from '@/context/MusicContext';
 import { Slider } from './ui/slider';
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, ListMusic } from 'lucide-react';
 import { Button } from './ui/button';
 import { formatDuration } from '@/lib/utils';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from './ui/sheet';
+import { ScrollArea } from './ui/scroll-area';
+import { SongItem } from './SongItem';
 
 export default function AudioPlayer() {
   const musicContext = useContext(MusicContext);
@@ -50,6 +53,7 @@ export default function AudioPlayer() {
       audio.removeEventListener('pause', () => setIsPlaying(false));
       audio.removeEventListener('ended', handleSkipForward);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [musicContext?.currentSong]);
 
   useEffect(() => {
@@ -98,7 +102,10 @@ export default function AudioPlayer() {
     return null;
   }
   
-  const { currentSong } = musicContext;
+  const { currentSong, queue } = musicContext;
+  const currentSongIndexInQueue = queue.findIndex(s => s.id === currentSong.id);
+  const upNext = queue.slice(currentSongIndexInQueue + 1);
+
 
   return (
     <div className="fixed bottom-16 left-0 right-0 z-20">
@@ -143,7 +150,28 @@ export default function AudioPlayer() {
             </div>
           </div>
           
-          <div className="hidden md:flex w-1/3 items-center justify-end gap-2">
+          <div className="hidden md:flex flex-1 w-1/3 items-center justify-end gap-2">
+            <Sheet>
+                <SheetTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                        <ListMusic className="h-5 w-5" />
+                    </Button>
+                </SheetTrigger>
+                <SheetContent className="w-full sm:w-[400px] p-0">
+                    <SheetHeader className="p-4 border-b">
+                        <SheetTitle>Up Next</SheetTitle>
+                    </SheetHeader>
+                    <ScrollArea className="h-[calc(100%-65px)]">
+                        <div className="p-2">
+                        {upNext.length > 0 ? (
+                            upNext.map((song) => <SongItem key={song.id} song={song} />)
+                        ) : (
+                            <p className="p-4 text-center text-muted-foreground">The queue is empty.</p>
+                        )}
+                        </div>
+                    </ScrollArea>
+                </SheetContent>
+            </Sheet>
             <Button variant="ghost" size="icon" onClick={toggleMute}>
               {isMuted || volume === 0 ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
             </Button>

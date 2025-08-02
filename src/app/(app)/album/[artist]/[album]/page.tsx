@@ -5,7 +5,7 @@ import { useContext, useEffect, useState } from 'react';
 import Image from 'next/image';
 import { MusicContext } from '@/context/MusicContext';
 import { getAlbums } from '@/lib/music-utils';
-import type { Album, Song } from '@/lib/types';
+import type { Album } from '@/lib/types';
 import { PageHeader } from '@/components/PageHeader';
 import { SongItem } from '@/components/SongItem';
 import { notFound } from 'next/navigation';
@@ -33,9 +33,7 @@ export default function AlbumDetailPage({ params }: { params: { artist: string; 
 
   const handlePlayAlbum = () => {
     if (album?.songs && album.songs.length > 0) {
-      musicContext?.playSong(album.songs[0]);
-      // The logic to queue up the rest of the album would go here.
-      // For now, it just starts with the first song.
+      musicContext?.playSong(album.songs[0], album.songs);
     }
   }
 
@@ -99,7 +97,7 @@ export default function AlbumDetailPage({ params }: { params: { artist: string; 
         <div className="mt-8 px-2 md:px-4">
           <div className="flex flex-col">
             {album.songs.map((song) => (
-                <SongItem key={song.id} song={song} />
+                <SongItem key={song.id} song={song} queue={album.songs} />
             ))}
           </div>
         </div>

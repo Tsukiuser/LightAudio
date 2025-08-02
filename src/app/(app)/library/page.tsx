@@ -70,7 +70,7 @@ export default function LibraryPage() {
         <TabsContent value="songs" className="mt-4 -mx-2 md:-mx-4">
           <div className="flex flex-col">
             {allSongs.map((song) => (
-              <SongItem key={song.id} song={song} />
+              <SongItem key={song.id} song={song} queue={allSongs}/>
             ))}
           </div>
         </TabsContent>
