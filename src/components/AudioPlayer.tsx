@@ -12,6 +12,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from './ui
 import { ScrollArea } from './ui/scroll-area';
 import { SongItem } from './SongItem';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { MusicVisualizer } from './MusicVisualizer';
 
 export default function AudioPlayer() {
   const musicContext = useContext(MusicContext);
@@ -124,7 +125,7 @@ export default function AudioPlayer() {
   return (
     <div className={`${playerBaseClass} ${playerPositionClass}`}>
       <div className="bg-background/80 backdrop-blur-md border-t border-border/80 p-2 md:p-4">
-        <audio ref={audioRef} />
+        <audio ref={audioRef} crossOrigin="anonymous"/>
         <div className="container mx-auto flex items-center gap-4">
             <Image
               src={currentSong.coverArt}
@@ -165,6 +166,7 @@ export default function AudioPlayer() {
           </div>
           
           <div className="hidden md:flex flex-1 w-1/3 items-center justify-end gap-2">
+            <MusicVisualizer audioRef={audioRef} isPlaying={isPlaying} />
             <Sheet>
                 <SheetTrigger asChild>
                     <Button variant="ghost" size="icon">
