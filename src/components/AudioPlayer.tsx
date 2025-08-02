@@ -5,12 +5,13 @@ import { useContext, useRef, useEffect, useState } from 'react';
 import Image from 'next/image';
 import { MusicContext } from '@/context/MusicContext';
 import { Slider } from './ui/slider';
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, ListMusic } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, ListMusic, Sparkles } from 'lucide-react';
 import { Button } from './ui/button';
 import { formatDuration } from '@/lib/utils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from './ui/sheet';
 import { ScrollArea } from './ui/scroll-area';
 import { SongItem } from './SongItem';
+import { Separator } from './ui/separator';
 
 export default function AudioPlayer() {
   const musicContext = useContext(MusicContext);
@@ -24,8 +25,16 @@ export default function AudioPlayer() {
 
   useEffect(() => {
     if (musicContext?.currentSong && audioRef.current) {
-      audioRef.current.src = musicContext.currentSong.url;
+      // Prevent re-loading the same song if the queue is just updated
+      const currentSrc = audioRef.current.src;
+      if (currentSrc !== musicContext.currentSong.url && !(currentSrc.endsWith(musicContext.currentSong.url))) {
+         audioRef.current.src = musicContext.currentSong.url;
+      }
       audioRef.current.play().then(() => setIsPlaying(true)).catch(e => console.error("Playback failed", e));
+    } else if (!musicContext?.currentSong && audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = "";
+      setIsPlaying(false);
     }
   }, [musicContext?.currentSong]);
 
@@ -63,6 +72,7 @@ export default function AudioPlayer() {
   }, [volume, isMuted]);
 
   const togglePlayPause = () => {
+    if (!musicContext?.currentSong) return;
     if (isPlaying) {
       audioRef.current?.pause();
     } else {
@@ -102,9 +112,13 @@ export default function AudioPlayer() {
     return null;
   }
   
-  const { currentSong, queue } = musicContext;
+  const { currentSong, userQueue, aiQueue } = musicContext;
+  const queue = [...userQueue, ...aiQueue];
   const currentSongIndexInQueue = queue.findIndex(s => s.id === currentSong.id);
   const upNext = queue.slice(currentSongIndexInQueue + 1);
+
+  const userQueueSongs = upNext.filter(song => userQueue.some(s => s.id === song.id));
+  const aiQueueSongs = upNext.filter(song => aiQueue.some(s => s.id === song.id));
 
 
   return (
@@ -127,13 +141,13 @@ export default function AudioPlayer() {
 
           <div className="flex-1 flex flex-col items-center justify-center gap-2">
             <div className="flex items-center gap-2 md:gap-4">
-              <Button variant="ghost" size="icon" className="h-10 w-10" onClick={handleSkipBack}>
+              <Button variant="ghost" size="icon" className="h-10 w-10" onClick={handleSkipBack} disabled={queue.length <= 1}>
                 <SkipBack className="h-5 w-5" />
               </Button>
               <Button variant="default" size="icon" className="h-12 w-12 rounded-full" onClick={togglePlayPause}>
                 {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
               </Button>
-              <Button variant="ghost" size="icon" className="h-10 w-10" onClick={handleSkipForward}>
+              <Button variant="ghost" size="icon" className="h-10 w-10" onClick={handleSkipForward} disabled={queue.length <= 1}>
                 <SkipForward className="h-5 w-5" />
               </Button>
             </div>
@@ -164,7 +178,21 @@ export default function AudioPlayer() {
                     <ScrollArea className="h-[calc(100%-65px)]">
                         <div className="p-2">
                         {upNext.length > 0 ? (
-                            upNext.map((song) => <SongItem key={song.id} song={song} />)
+                           <>
+                            {userQueueSongs.length > 0 && userQueueSongs.map((song) => <SongItem key={song.id} song={song} />)}
+                            
+                            {userQueueSongs.length > 0 && aiQueueSongs.length > 0 && <Separator className="my-2" />}
+
+                            {aiQueueSongs.length > 0 && (
+                                <div className="mt-2">
+                                    <h3 className="px-2 text-sm font-semibold text-muted-foreground flex items-center">
+                                        <Sparkles className="mr-2 h-4 w-4 text-primary" />
+                                        <span>AI Generated</span>
+                                    </h3>
+                                    {aiQueueSongs.map((song) => <SongItem key={song.id} song={song} isAiGenerated />)}
+                                </div>
+                            )}
+                           </>
                         ) : (
                             <p className="p-4 text-center text-muted-foreground">The queue is empty.</p>
                         )}

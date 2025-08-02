@@ -4,7 +4,7 @@
 import { useContext } from 'react';
 import Image from 'next/image';
 import type { Song } from '@/lib/types';
-import { MoreHorizontal, Music, ListPlus } from 'lucide-react';
+import { MoreHorizontal, Music, ListPlus, Sparkles } from 'lucide-react';
 import { Button } from './ui/button';
 import { MusicContext } from '@/context/MusicContext';
 import { cn } from '@/lib/utils';
@@ -15,9 +15,10 @@ import { useToast } from '@/hooks/use-toast';
 interface SongItemProps {
   song: Song;
   queue?: Song[]; // Optional: The queue to set when this song is played
+  isAiGenerated?: boolean;
 }
 
-export function SongItem({ song, queue }: SongItemProps) {
+export function SongItem({ song, queue, isAiGenerated }: SongItemProps) {
   const musicContext = useContext(MusicContext);
   const isCurrentSong = musicContext?.currentSong?.id === song.id;
   const { toast } = useToast();
@@ -61,7 +62,10 @@ export function SongItem({ song, queue }: SongItemProps) {
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <p className={cn("font-medium truncate", isCurrentSong ? "text-primary" : "text-foreground")}>{song.title}</p>
+            <div className="flex items-center gap-2">
+                {isAiGenerated && <Sparkles className="h-4 w-4 text-primary flex-shrink-0" />}
+                <p className={cn("font-medium truncate", isCurrentSong ? "text-primary" : "text-foreground")}>{song.title}</p>
+            </div>
           <p className="text-sm text-muted-foreground truncate">{song.artist}</p>
         </div>
       </div>
