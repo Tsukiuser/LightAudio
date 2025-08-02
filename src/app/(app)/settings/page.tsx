@@ -96,7 +96,7 @@ export default function SettingsPage() {
 
   return (
     <ScrollArea className="h-full">
-      <div className="container mx-auto max-w-3xl pb-8">
+      <div className="container mx-auto max-w-3xl pb-28">
         <PageHeader title="Settings" />
         <div className="space-y-8 p-4 md:p-6">
           <Card>
