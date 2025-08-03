@@ -15,7 +15,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { StaticLogo } from './StaticLogo';
 import { cn } from '@/lib/utils';
 import { AlbumPlaceholder } from './AlbumPlaceholder';
-import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from './ui/tooltip';
+import NowPlayingSheet from './NowPlayingSheet';
 
 export default function AudioPlayer() {
   const musicContext = useContext(MusicContext);
@@ -25,6 +26,7 @@ export default function AudioPlayer() {
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.5);
   const [isMuted, setIsMuted] = useState(false);
+  const [isNowPlayingOpen, setIsNowPlayingOpen] = useState(false);
   const isMobile = useIsMobile();
 
 
@@ -120,113 +122,163 @@ export default function AudioPlayer() {
     : "bottom-0 md:group-data-[sidebar-state=expanded]/body:ml-64 md:group-data-[sidebar-state=collapsed]/body:ml-12";
 
 
+  if (isMobile) {
+    return (
+      <>
+        <div className={cn(playerBaseClass, playerPositionClass)}>
+          <div className="bg-background/80 backdrop-blur-md border-t border-border/80 p-2">
+             <div className="container mx-auto flex items-center gap-3">
+                 <div className="h-10 w-10 flex-shrink-0" onClick={() => setIsNowPlayingOpen(true)}>
+                    {currentSong.coverArt ? (
+                      <Image
+                        src={currentSong.coverArt}
+                        alt={currentSong.album}
+                        width={40}
+                        height={40}
+                        className="h-full w-full rounded-md object-cover"
+                        data-ai-hint="album cover"
+                      />
+                    ) : (
+                      <AlbumPlaceholder className="rounded-md h-full w-full" />
+                    )}
+                 </div>
+                 <div className="flex-1 min-w-0" onClick={() => setIsNowPlayingOpen(true)}>
+                    <p className="font-medium truncate text-foreground">{currentSong.title}</p>
+                    <p className="text-sm text-muted-foreground truncate">{currentSong.artist}</p>
+                 </div>
+                 <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="icon" className="h-10 w-10" onClick={togglePlayPause}>
+                      {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-10 w-10" onClick={handleSkipForward} disabled={queue.length <= 1}>
+                      <SkipForward className="h-5 w-5" />
+                    </Button>
+                 </div>
+             </div>
+          </div>
+        </div>
+        <NowPlayingSheet 
+            open={isNowPlayingOpen} 
+            onOpenChange={setIsNowPlayingOpen}
+            progress={progress}
+            duration={duration}
+            onSeek={handleSeek}
+        />
+      </>
+    )
+  }
+
   return (
     <div className={cn(playerBaseClass, playerPositionClass)}>
-      <div className="bg-background/80 backdrop-blur-md border-t border-border/80 p-2 md:p-4">
-        <div className="container mx-auto flex items-center gap-4">
-            <div className="h-10 w-10 md:h-14 md:w-14 flex-shrink-0">
-              {currentSong.coverArt ? (
-                <Image
-                  src={currentSong.coverArt}
-                  alt={currentSong.album}
-                  width={56}
-                  height={56}
-                  className="h-full w-full rounded-md object-cover"
-                  data-ai-hint="album cover"
-                />
-              ) : (
-                <AlbumPlaceholder className="rounded-md h-full w-full" />
-              )}
+      <TooltipProvider>
+        <div className="bg-background/80 backdrop-blur-md border-t border-border/80 p-2 md:p-4">
+          <div className="container mx-auto flex items-center gap-4">
+              <div className="h-10 w-10 md:h-14 md:w-14 flex-shrink-0">
+                {currentSong.coverArt ? (
+                  <Image
+                    src={currentSong.coverArt}
+                    alt={currentSong.album}
+                    width={56}
+                    height={56}
+                    className="h-full w-full rounded-md object-cover"
+                    data-ai-hint="album cover"
+                  />
+                ) : (
+                  <AlbumPlaceholder className="rounded-md h-full w-full" />
+                )}
+              </div>
+            <div className="flex-1 min-w-0 md:min-w-fit md:w-1/3">
+              <p className="font-medium truncate text-foreground">{currentSong.title}</p>
+              <p className="text-sm text-muted-foreground truncate">{currentSong.artist}</p>
             </div>
-          <div className="flex-1 min-w-0 md:min-w-fit md:w-1/3">
-            <p className="font-medium truncate text-foreground">{currentSong.title}</p>
-            <p className="text-sm text-muted-foreground truncate">{currentSong.artist}</p>
-          </div>
 
-          <div className="flex-1 flex flex-col items-center justify-center gap-2">
-            <div className="flex items-center gap-1 md:gap-2">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className={cn("h-10 w-10", isShuffled && "text-primary")} onClick={toggleShuffle}>
-                    <Shuffle className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Shuffle</p>
-                </TooltipContent>
-              </Tooltip>
-              <Button variant="ghost" size="icon" className="h-10 w-10" onClick={handleSkipBack} disabled={queue.length <= 1}>
-                <SkipBack className="h-5 w-5" />
-              </Button>
-              <Button variant="default" size="icon" className="h-12 w-12 rounded-full" onClick={togglePlayPause}>
-                {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
-              </Button>
-              <Button variant="ghost" size="icon" className="h-10 w-10" onClick={handleSkipForward} disabled={queue.length <= 1}>
-                <SkipForward className="h-5 w-5" />
-              </Button>
-              <Tooltip>
-                 <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className={cn("h-10 w-10", repeatMode !== 'none' && "text-primary")} onClick={toggleRepeat}>
-                        {repeatMode === 'one' ? <Repeat1 className="h-4 w-4" /> : <Repeat className="h-4 w-4" />}
+            <div className="flex-1 flex flex-col items-center justify-center gap-2">
+              <div className="flex items-center gap-1 md:gap-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className={cn("h-10 w-10", isShuffled && "text-primary")} onClick={toggleShuffle}>
+                      <Shuffle className="h-4 w-4" />
                     </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                    {repeatMode === 'none' ? <p>Repeat Off</p> : repeatMode === 'all' ? <p>Repeat All</p> : <p>Repeat One</p>}
-                </TooltipContent>
-              </Tooltip>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Shuffle</p>
+                  </TooltipContent>
+                </Tooltip>
+                <Button variant="ghost" size="icon" className="h-10 w-10" onClick={handleSkipBack} disabled={queue.length <= 1}>
+                  <SkipBack className="h-5 w-5" />
+                </Button>
+                <Button variant="default" size="icon" className="h-12 w-12 rounded-full" onClick={togglePlayPause}>
+                  {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
+                </Button>
+                <Button variant="ghost" size="icon" className="h-10 w-10" onClick={handleSkipForward} disabled={queue.length <= 1}>
+                  <SkipForward className="h-5 w-5" />
+                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" className={cn("h-10 w-10", repeatMode !== 'none' && "text-primary")} onClick={toggleRepeat}>
+                          {repeatMode === 'one' ? <Repeat1 className="h-4 w-4" /> : <Repeat className="h-4 w-4" />}
+                      </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                      {repeatMode === 'none' ? <p>Repeat Off</p> : repeatMode === 'all' ? <p>Repeat All</p> : <p>Repeat One</p>}
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              <div className="w-full flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground w-10 text-right">{formatDuration(progress)}</span>
+                  <Slider
+                      value={[progress]}
+                      max={duration || 0}
+                      step={1}
+                      onValueChange={handleSeek}
+                      className="w-full"
+                  />
+                  <span className="text-xs text-muted-foreground w-10">{formatDuration(duration)}</span>
+              </div>
             </div>
-            <div className="w-full flex items-center gap-2">
-                <span className="text-xs text-muted-foreground w-10 text-right">{formatDuration(progress)}</span>
-                <Slider
-                    value={[progress]}
-                    max={duration || 0}
-                    step={1}
-                    onValueChange={handleSeek}
-                    className="w-full"
-                />
-                <span className="text-xs text-muted-foreground w-10">{formatDuration(duration)}</span>
+            
+            <div className="hidden md:flex flex-1 w-1/3 items-center justify-end gap-2">
+              <button onClick={() => alert('Equalizer feature coming soon!')}>
+                <StaticLogo />
+              </button>
+              <Sheet>
+                  <SheetTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                          <ListMusic className="h-5 w-5" />
+                      </Button>
+                  </SheetTrigger>
+                  <SheetContent className="w-full sm:w-[400px] p-0">
+                      <SheetHeader className="p-4 border-b">
+                          <SheetTitle>Up Next</SheetTitle>
+                      </SheetHeader>
+                      <ScrollArea className="h-[calc(100%-65px)]">
+                          <div className="p-2">
+                          {upNext.length > 0 ? (
+                              upNext.map((song) => <SongItem key={song.id} song={song} />)
+                          ) : (
+                              <p className="p-4 text-center text-muted-foreground">The queue is empty.</p>
+                          )}
+                          </div>
+                      </ScrollArea>
+                  </SheetContent>
+              </Sheet>
+              <Button variant="ghost" size="icon" onClick={toggleMute}>
+                {isMuted || volume === 0 ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+              </Button>
+              <Slider
+                value={[isMuted ? 0 : volume]}
+                max={1}
+                step={0.01}
+                onValueChange={handleVolumeChange}
+                className="w-24"
+              />
             </div>
-          </div>
-          
-          <div className="hidden md:flex flex-1 w-1/3 items-center justify-end gap-2">
-            <button onClick={() => alert('Equalizer feature coming soon!')}>
-              <StaticLogo />
-            </button>
-            <Sheet>
-                <SheetTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                        <ListMusic className="h-5 w-5" />
-                    </Button>
-                </SheetTrigger>
-                <SheetContent className="w-full sm:w-[400px] p-0">
-                    <SheetHeader className="p-4 border-b">
-                        <SheetTitle>Up Next</SheetTitle>
-                    </SheetHeader>
-                    <ScrollArea className="h-[calc(100%-65px)]">
-                        <div className="p-2">
-                        {upNext.length > 0 ? (
-                            upNext.map((song) => <SongItem key={song.id} song={song} />)
-                        ) : (
-                            <p className="p-4 text-center text-muted-foreground">The queue is empty.</p>
-                        )}
-                        </div>
-                    </ScrollArea>
-                </SheetContent>
-            </Sheet>
-            <Button variant="ghost" size="icon" onClick={toggleMute}>
-              {isMuted || volume === 0 ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
-            </Button>
-            <Slider
-              value={[isMuted ? 0 : volume]}
-              max={1}
-              step={0.01}
-              onValueChange={handleVolumeChange}
-              className="w-24"
-            />
-          </div>
 
+          </div>
         </div>
-      </div>
+      </TooltipProvider>
     </div>
   );
 }
+
+    

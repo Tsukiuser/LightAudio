@@ -7,17 +7,16 @@ import { useContext } from 'react';
 import { MusicContext } from '@/context/MusicContext';
 
 interface MusicVisualizerProps {
-    // The props are no longer needed as we get everything from context
+    numBars?: number;
+    className?: string;
 }
 
-const NUM_BARS = 5;
-
-export function MusicVisualizer(props: MusicVisualizerProps) {
+export function MusicVisualizer({ numBars = 5, className }: MusicVisualizerProps) {
     const musicContext = useContext(MusicContext);
     const isPlaying = musicContext?.isPlaying ?? false;
     const analyser = musicContext?.analyser;
 
-    const [barHeights, setBarHeights] = useState(new Array(NUM_BARS).fill(0));
+    const [barHeights, setBarHeights] = useState(new Array(numBars).fill(0));
     const animationFrameId = useRef<number>(0);
 
     useEffect(() => {
@@ -32,9 +31,9 @@ export function MusicVisualizer(props: MusicVisualizerProps) {
             analyser.getByteFrequencyData(dataArray);
 
             const newBarHeights = [];
-            const barWidth = Math.floor(bufferLength / NUM_BARS);
+            const barWidth = Math.floor(bufferLength / numBars);
 
-            for (let i = 0; i < NUM_BARS; i++) {
+            for (let i = 0; i < numBars; i++) {
                 let sum = 0;
                 for (let j = 0; j < barWidth; j++) {
                     sum += dataArray[i * barWidth + j];
@@ -51,17 +50,17 @@ export function MusicVisualizer(props: MusicVisualizerProps) {
             animate();
         } else {
             cancelAnimationFrame(animationFrameId.current);
-            setBarHeights(new Array(NUM_BARS).fill(0));
+            setBarHeights(new Array(numBars).fill(0));
         }
 
         return () => {
             cancelAnimationFrame(animationFrameId.current);
         };
 
-    }, [isPlaying, analyser]);
+    }, [isPlaying, analyser, numBars]);
 
     return (
-        <div className="flex items-end justify-center h-6 w-10 gap-1">
+        <div className={cn("flex items-end justify-center h-6 w-10 gap-1", className)}>
             {barHeights.map((height, index) => (
                 <div
                     key={index}
@@ -69,9 +68,11 @@ export function MusicVisualizer(props: MusicVisualizerProps) {
                         'w-1 bg-primary rounded-full transition-all duration-100 ease-out',
                         !isPlaying && 'h-[2px]'
                     )}
-                    style={{ height: `${isPlaying ? height : 0}%` }}
+                    style={{ height: `${isPlaying ? height : 2}%` }}
                 />
             ))}
         </div>
     );
 }
+
+    
