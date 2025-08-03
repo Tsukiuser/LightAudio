@@ -8,6 +8,7 @@ import * as music from 'music-metadata-browser';
 import { useToast } from '@/hooks/use-toast';
 import { get, set, del } from '@/lib/idb';
 import { useRouter } from 'next/navigation';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 type RepeatMode = 'none' | 'all' | 'one';
 type PlaybackState = {
@@ -125,6 +126,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const { toast } = useToast();
   const router = useRouter();
+  const isMobile = useIsMobile();
 
 
   const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
@@ -364,7 +366,13 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
             if (handle) {
                 storedHandle = handle;
                 setHasAccess(true);
-                await loadMusicFromHandle(handle, true);
+                // On mobile, don't automatically scan as permissions are not persistent.
+                // The user will be prompted to grant access again when they try to play a song.
+                if (!isMobile) {
+                    await loadMusicFromHandle(handle, true);
+                } else {
+                    setIsLoading(false);
+                }
             } else {
                 setIsLoading(false);
             }
@@ -373,8 +381,10 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
             setIsLoading(false);
         }
     };
-    checkAccess();
-  }, [loadMusicFromHandle]);
+    if (isMobile !== undefined) {
+        checkAccess();
+    }
+  }, [loadMusicFromHandle, isMobile]);
 
   const createPlaylist = async (name: string) => {
     const newPlaylist: Playlist = {
