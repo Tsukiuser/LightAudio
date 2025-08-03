@@ -26,6 +26,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <meta name="theme-color" content="#26262b" />
       </head>
       <body className={`${inter.variable} font-body antialiased`}>
         <ThemeManager />
