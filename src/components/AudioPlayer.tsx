@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { AlbumPlaceholder } from './AlbumPlaceholder';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from './ui/tooltip';
 import NowPlayingSheet from './NowPlayingSheet';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 
 export default function AudioPlayer() {
   const musicContext = useContext(MusicContext);
@@ -241,17 +242,17 @@ export default function AudioPlayer() {
               <button onClick={() => alert('Equalizer feature coming soon!')}>
                 <StaticLogo />
               </button>
-              <Sheet>
-                  <SheetTrigger asChild>
+              <Dialog>
+                  <DialogTrigger asChild>
                       <Button variant="ghost" size="icon">
                           <ListMusic className="h-5 w-5" />
                       </Button>
-                  </SheetTrigger>
-                  <SheetContent className="w-full sm:w-[400px] p-0">
-                      <SheetHeader className="p-4 border-b">
-                          <SheetTitle>Up Next</SheetTitle>
-                      </SheetHeader>
-                      <ScrollArea className="h-[calc(100%-65px)]">
+                  </DialogTrigger>
+                  <DialogContent className="max-w-md p-0">
+                      <DialogHeader className="p-4 border-b">
+                          <DialogTitle>Up Next</DialogTitle>
+                      </DialogHeader>
+                      <ScrollArea className="max-h-[60vh]">
                           <div className="p-2">
                           {upNext.length > 0 ? (
                               upNext.map((song) => <SongItem key={song.id} song={song} />)
@@ -260,8 +261,8 @@ export default function AudioPlayer() {
                           )}
                           </div>
                       </ScrollArea>
-                  </SheetContent>
-              </Sheet>
+                  </DialogContent>
+              </Dialog>
               <Button variant="ghost" size="icon" onClick={toggleMute}>
                 {isMuted || volume === 0 ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
               </Button>
@@ -280,5 +281,3 @@ export default function AudioPlayer() {
     </div>
   );
 }
-
-    

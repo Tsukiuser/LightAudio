@@ -3,12 +3,12 @@
 
 import { useContext } from 'react';
 import Image from 'next/image';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { MusicContext } from '@/context/MusicContext';
 import { AlbumPlaceholder } from './AlbumPlaceholder';
 import { Slider } from './ui/slider';
 import { Button } from './ui/button';
-import { Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1 } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, ChevronUp } from 'lucide-react';
 import { cn, formatDuration } from '@/lib/utils';
 import { ScrollArea } from './ui/scroll-area';
 import { SongItem } from './SongItem';
@@ -78,7 +78,7 @@ export default function NowPlayingSheet({ open, onOpenChange, progress, duration
                     </div>
                 </div>
 
-                <div className="px-6 space-y-4 flex-shrink-0">
+                <div className="px-6 space-y-4 flex-shrink-0 flex-grow flex flex-col justify-around">
                     <div>
                         <Slider
                             value={[progress]}
@@ -112,23 +112,33 @@ export default function NowPlayingSheet({ open, onOpenChange, progress, duration
                     </div>
                 </div>
                 
-                <div className="flex justify-between items-center px-6 pt-6 pb-2 flex-shrink-0">
-                    <h3 className="text-lg font-semibold">Up Next</h3>
-                    {isPlaying && <MusicVisualizer numBars={4} className="w-5 h-5" />}
+                 <div className="flex-shrink-0 border-t pt-2">
+                    <Sheet>
+                        <SheetTrigger asChild>
+                            <Button variant="ghost" className="w-full">
+                                <span className="mr-2">Up Next</span>
+                                <ChevronUp className="h-4 w-4" />
+                            </Button>
+                        </SheetTrigger>
+                        <SheetContent side="bottom" className="h-4/5 bg-background p-0 flex flex-col">
+                             <SheetHeader className="p-4 border-b flex-row justify-between items-center">
+                                <SheetTitle>Up Next</SheetTitle>
+                                {isPlaying && <MusicVisualizer numBars={4} className="w-5 h-5" />}
+                            </SheetHeader>
+                            <ScrollArea className="flex-1">
+                                <div className="px-4 pb-4">
+                                    {upNext.length > 0 ? (
+                                        upNext.map((song) => <SongItem key={song.id} song={song} />)
+                                    ) : (
+                                        <p className="p-4 text-center text-sm text-muted-foreground">End of queue.</p>
+                                    )}
+                                </div>
+                            </ScrollArea>
+                        </SheetContent>
+                    </Sheet>
                 </div>
 
-                <ScrollArea className="flex-1">
-                    <div className="px-4 pb-4">
-                        {upNext.length > 0 ? (
-                            upNext.map((song) => <SongItem key={song.id} song={song} />)
-                        ) : (
-                            <p className="p-4 text-center text-sm text-muted-foreground">End of queue.</p>
-                        )}
-                    </div>
-                </ScrollArea>
             </SheetContent>
         </Sheet>
     )
 }
-
-    
