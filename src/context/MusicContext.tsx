@@ -299,15 +299,17 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
   // Effect to save state whenever it changes
     useEffect(() => {
         const saveState = () => {
-            savePlaybackState({
-                currentSongId: currentSong?.id,
-                queueIds: queue.map(s => s.id),
-                originalQueueIds: originalQueue.map(s => s.id),
-                isShuffled,
-                repeatMode,
-                progress: audioRef.current?.currentTime,
-                volume: audioRef.current?.volume
-            });
+            if (audioRef.current) {
+                savePlaybackState({
+                    currentSongId: currentSong?.id,
+                    queueIds: queue.map(s => s.id),
+                    originalQueueIds: originalQueue.map(s => s.id),
+                    isShuffled,
+                    repeatMode,
+                    progress: audioRef.current?.currentTime,
+                    volume: audioRef.current?.volume
+                });
+            }
         };
 
         const interval = setInterval(saveState, 5000); // Save every 5 seconds
