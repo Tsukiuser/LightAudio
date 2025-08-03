@@ -2,6 +2,10 @@
   "name": "LightAudio",
   "short_name": "LightAudio",
   "description": "Your local music, reimagined.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#26262b",
+  "theme_color": "#9f8fbf",
   "icons": [
     {
       "src": "/icons/icon-192x192.png",
@@ -13,9 +17,5 @@
       "sizes": "512x512",
       "type": "image/png"
     }
-  ],
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#18181b",
-  "theme_color": "#7c3aed"
+  ]
 }
