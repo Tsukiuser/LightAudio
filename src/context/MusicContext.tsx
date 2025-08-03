@@ -10,6 +10,15 @@ import { get, set, del } from '@/lib/idb';
 import { useRouter } from 'next/navigation';
 
 type RepeatMode = 'none' | 'all' | 'one';
+type PlaybackState = {
+  currentSongId?: string;
+  queueIds?: string[];
+  originalQueueIds?: string[];
+  isShuffled?: boolean;
+  repeatMode?: RepeatMode;
+  progress?: number;
+  volume?: number;
+}
 
 interface MusicContextType {
   songs: Song[];
@@ -67,6 +76,37 @@ const shuffleArray = <T,>(array: T[]): T[] => {
   }
   return newArray;
 };
+
+const savePlaybackState = (state: PlaybackState) => {
+    try {
+        const stateToSave = {
+            currentSongId: state.currentSongId,
+            queueIds: state.queueIds,
+            originalQueueIds: state.originalQueueIds,
+            isShuffled: state.isShuffled,
+            repeatMode: state.repeatMode,
+            progress: state.progress,
+            volume: state.volume,
+        };
+        localStorage.setItem('playbackState', JSON.stringify(stateToSave));
+    } catch (error) {
+        console.error("Failed to save playback state", error);
+    }
+}
+
+const loadPlaybackState = (): PlaybackState | null => {
+    try {
+        const savedState = localStorage.getItem('playbackState');
+        if (savedState) {
+            return JSON.parse(savedState);
+        }
+        return null;
+    } catch (error) {
+        console.error("Failed to load playback state", error);
+        return null;
+    }
+}
+
 
 export const MusicProvider = ({ children }: { children: ReactNode }) => {
   const [songs, setSongs] = useState<Song[]>([]);
@@ -208,6 +248,39 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     }
     
     setSongs(newSongs);
+
+    // After songs are loaded, restore playback state
+    const savedState = loadPlaybackState();
+    if (savedState) {
+        if (savedState.isShuffled) setIsShuffled(savedState.isShuffled);
+        if (savedState.repeatMode) setRepeatMode(savedState.repeatMode);
+        if (savedState.volume !== undefined && audioRef.current) audioRef.current.volume = savedState.volume;
+
+        const restoredQueue = (savedState.queueIds || [])
+            .map(id => newSongs.find(s => s.id === id))
+            .filter((s): s is Song => !!s);
+        setQueue(restoredQueue);
+
+        const restoredOriginalQueue = (savedState.originalQueueIds || [])
+            .map(id => newSongs.find(s => s.id === id))
+            .filter((s): s is Song => !!s);
+        setOriginalQueue(restoredOriginalQueue);
+
+        if (savedState.currentSongId) {
+            const restoredSong = newSongs.find(s => s.id === savedState.currentSongId);
+            if (restoredSong) {
+                setCurrentSong(restoredSong);
+                if (audioRef.current) {
+                    audioRef.current.src = restoredSong.url;
+                    audioRef.current.load();
+                    if (savedState.progress) {
+                        audioRef.current.currentTime = savedState.progress;
+                    }
+                }
+            }
+        }
+    }
+    
     setIsLoading(false);
     if (newSongs.length > 0 && !isInitialLoad) {
         toast({
@@ -216,6 +289,29 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         })
     }
   }, [toast]);
+
+  // Effect to save state whenever it changes
+    useEffect(() => {
+        const saveState = () => {
+            savePlaybackState({
+                currentSongId: currentSong?.id,
+                queueIds: queue.map(s => s.id),
+                originalQueueIds: originalQueue.map(s => s.id),
+                isShuffled,
+                repeatMode,
+                progress: audioRef.current?.currentTime,
+                volume: audioRef.current?.volume
+            });
+        };
+
+        const interval = setInterval(saveState, 5000); // Save every 5 seconds
+        window.addEventListener('beforeunload', saveState); // Save on closing tab
+
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('beforeunload', saveState);
+        };
+    }, [currentSong, queue, originalQueue, isShuffled, repeatMode]);
 
   const rescanMusic = useCallback(async () => {
     if (storedHandle) {
@@ -237,6 +333,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
       storedHandle = null;
       await del('directoryHandle');
       await del('playlists');
+      localStorage.removeItem('playbackState');
       setPlaylists([]);
   }, []);
 
@@ -396,8 +493,10 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
       if (repeatMode === 'all') {
         nextIndex = 0;
       } else {
-        setCurrentSong(null);
-        setIsPlaying(false);
+        // Don't stop, just loop back to start of queue if not repeating all
+        nextIndex = 0;
+        setCurrentSong(queue[nextIndex]);
+        pause(); // stop playing
         return;
       }
     }
@@ -544,3 +643,5 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     </MusicContext.Provider>
   );
 };
+
+    

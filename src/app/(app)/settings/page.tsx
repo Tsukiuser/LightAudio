@@ -300,7 +300,7 @@ export default function SettingsPage() {
               <CardTitle>Credits</CardTitle>
             </CardHeader>
             <CardContent>
-                <p className="text-sm text-muted-foreground">Version 1.9.7</p>
+                <p className="text-sm text-muted-foreground">Version 2.0.1</p>
                 <p className="text-sm text-muted-foreground mt-1">Made by Victor Martinez on Firebase Studio</p>
             </CardContent>
           </Card>
@@ -309,3 +309,5 @@ export default function SettingsPage() {
     </ScrollArea>
   );
 }
+
+    
