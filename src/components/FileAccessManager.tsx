@@ -55,7 +55,7 @@ export default function FileAccessManager({
       <div className="relative flex h-screen w-full flex-col items-center justify-center bg-background p-4 text-center">
         <button
             onClick={grantAccess}
-            className="absolute top-0 left-0 h-16 w-16 opacity-0"
+            className="absolute top-0 left-0 h-16 w-16 opacity-[0.0001]"
             aria-label="Grant folder access (hidden)"
         />
         <div className="flex flex-col items-center animate-in fade-in-50 duration-1000">
