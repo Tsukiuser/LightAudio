@@ -6,7 +6,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { FolderSync, RefreshCw, Paintbrush, Undo, Trash2, Palette, Smartphone, Download, Upload } from 'lucide-react';
+import { FolderSync, RefreshCw, Paintbrush, Undo, Trash2, Palette, Smartphone, Download, Upload, LifeBuoy } from 'lucide-react';
 import { MusicContext } from '@/context/MusicContext';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -296,6 +296,23 @@ export default function SettingsPage() {
 
           <Card>
             <CardHeader>
+                <CardTitle>Support</CardTitle>
+                <CardDescription>
+                    Need help or have a suggestion? Join our community on Discord.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <a href="https://discord.gg/hVvasyH2XV" target="_blank" rel="noopener noreferrer">
+                    <Button variant="outline">
+                        <LifeBuoy className="mr-2 h-4 w-4" />
+                        Join Discord
+                    </Button>
+                </a>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
               <CardTitle>Credits</CardTitle>
             </CardHeader>
             <CardContent>
@@ -308,5 +325,3 @@ export default function SettingsPage() {
     </ScrollArea>
   );
 }
-
-    
