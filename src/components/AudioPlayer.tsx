@@ -5,7 +5,7 @@ import { useContext, useEffect, useState }from 'react';
 import Image from 'next/image';
 import { MusicContext } from '@/context/MusicContext';
 import { Slider } from './ui/slider';
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, ListMusic, Shuffle, Repeat, Repeat1 } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, ListMusic, Shuffle, Repeat, Repeat1, Trash2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { formatDuration } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
@@ -113,9 +113,9 @@ export default function AudioPlayer() {
     return null;
   }
   
-  const { currentSong, queue, isPlaying, isShuffled, repeatMode, toggleShuffle, toggleRepeat } = musicContext;
+  const { currentSong, queue, isPlaying, isShuffled, repeatMode, toggleShuffle, toggleRepeat, removeFromQueue, clearQueue } = musicContext;
   const currentSongIndexInQueue = queue.findIndex(s => s.id === currentSong.id);
-  const upNext = queue.slice(currentSongIndexInQueue + 1);
+  const upNext = currentSongIndexInQueue > -1 ? queue.slice(currentSongIndexInQueue + 1) : [];
 
   const playerBaseClass = "fixed right-0 z-20 transition-[margin-left] duration-300 ease-in-out";
   const playerPositionClass = isMobile 
@@ -249,13 +249,25 @@ export default function AudioPlayer() {
                       </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-md p-0">
-                      <DialogHeader className="p-4 border-b">
+                      <DialogHeader className="p-4 border-b flex flex-row justify-between items-center">
                           <DialogTitle>Up Next</DialogTitle>
+                           <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                  <Button variant="ghost" size="icon" onClick={clearQueue} disabled={upNext.length === 0}>
+                                      <Trash2 className="h-4 w-4" />
+                                  </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Clear Queue</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                       </DialogHeader>
                       <ScrollArea className="max-h-[60vh]">
                           <div className="p-2">
                           {upNext.length > 0 ? (
-                              upNext.map((song) => <SongItem key={song.id} song={song} />)
+                              upNext.map((song) => <SongItem key={song.id} song={song} onRemove={() => removeFromQueue?.(song.id)} />)
                           ) : (
                               <p className="p-4 text-center text-muted-foreground">The queue is empty.</p>
                           )}

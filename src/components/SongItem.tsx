@@ -4,7 +4,7 @@
 import { useContext } from 'react';
 import Image from 'next/image';
 import type { Song } from '@/lib/types';
-import { MoreHorizontal, ListPlus, Music2, Album as AlbumIcon } from 'lucide-react';
+import { MoreHorizontal, ListPlus, Music2, Album as AlbumIcon, X } from 'lucide-react';
 import { Button } from './ui/button';
 import { MusicContext } from '@/context/MusicContext';
 import { cn } from '@/lib/utils';
@@ -18,14 +18,17 @@ import Link from 'next/link';
 interface SongItemProps {
   song: Song;
   queue?: Song[]; // Optional: The queue to set when this song is played
+  onRemove?: () => void; // Optional: Callback to remove song from a list
 }
 
-export function SongItem({ song, queue }: SongItemProps) {
+export function SongItem({ song, queue, onRemove }: SongItemProps) {
   const musicContext = useContext(MusicContext);
   const isCurrentSong = musicContext?.currentSong?.id === song.id;
   const { toast } = useToast();
 
   const handlePlay = () => {
+    // Don't play if we're trying to remove it
+    if (onRemove) return;
     musicContext?.playSong(song, queue);
   };
 
@@ -65,7 +68,7 @@ export function SongItem({ song, queue }: SongItemProps) {
           ) : (
              <AlbumPlaceholder className="rounded-md h-10 w-10"/>
           )}
-          {isCurrentSong && (
+          {isCurrentSong && !onRemove && (
               <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-md">
                   <StaticLogo className="h-5 w-5 text-white" />
               </div>
@@ -76,44 +79,53 @@ export function SongItem({ song, queue }: SongItemProps) {
           <p className="text-sm text-muted-foreground truncate">{song.artist}</p>
         </div>
       </div>
-      <div className="hidden sm:block text-sm text-muted-foreground">{song.duration}</div>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8 ml-auto flex-shrink-0">
-            <MoreHorizontal className="h-4 w-4" />
+      
+      {onRemove ? (
+         <Button variant="ghost" size="icon" className="h-8 w-8 ml-auto flex-shrink-0" onClick={onRemove}>
+            <X className="h-4 w-4" />
           </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={handleAddToQueue}>
-            <ListPlus className="mr-2 h-4 w-4" />
-            Add to Queue
-          </DropdownMenuItem>
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger>
-              <Music2 className="mr-2 h-4 w-4" />
-              Add to Playlist
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent>
-              {musicContext?.playlists && musicContext.playlists.length > 0 ? (
-                musicContext.playlists.map(playlist => (
-                  <DropdownMenuItem key={playlist.id} onClick={() => handleAddToPlaylist(playlist.id)}>
-                    {playlist.name}
-                  </DropdownMenuItem>
-                ))
-              ) : (
-                <DropdownMenuItem disabled>No playlists found</DropdownMenuItem>
-              )}
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-          <DropdownMenuSeparator />
-           <DropdownMenuItem asChild>
-             <Link href={`/album/${encodeURIComponent(song.artist)}/${encodeURIComponent(song.album)}`}>
-                <AlbumIcon className="mr-2 h-4 w-4" />
-                Go to Album
-            </Link>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      ) : (
+        <>
+            <div className="hidden sm:block text-sm text-muted-foreground">{song.duration}</div>
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 ml-auto flex-shrink-0">
+                    <MoreHorizontal className="h-4 w-4" />
+                </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleAddToQueue}>
+                    <ListPlus className="mr-2 h-4 w-4" />
+                    Add to Queue
+                </DropdownMenuItem>
+                <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                    <Music2 className="mr-2 h-4 w-4" />
+                    Add to Playlist
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent>
+                    {musicContext?.playlists && musicContext.playlists.length > 0 ? (
+                        musicContext.playlists.map(playlist => (
+                        <DropdownMenuItem key={playlist.id} onClick={() => handleAddToPlaylist(playlist.id)}>
+                            {playlist.name}
+                        </DropdownMenuItem>
+                        ))
+                    ) : (
+                        <DropdownMenuItem disabled>No playlists found</DropdownMenuItem>
+                    )}
+                    </DropdownMenuSubContent>
+                </DropdownMenuSub>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                    <Link href={`/album/${encodeURIComponent(song.artist)}/${encodeURIComponent(song.album)}`}>
+                        <AlbumIcon className="mr-2 h-4 w-4" />
+                        Go to Album
+                    </Link>
+                </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+        </>
+      )}
     </div>
   );
 }

@@ -35,6 +35,8 @@ interface MusicContextType {
   playNextSong: () => void;
   playPreviousSong: () => void;
   addToQueue: (song: Song) => void;
+  removeFromQueue: (songId: string) => void;
+  clearQueue: () => void;
   loadMusic: (directoryHandle: FileSystemDirectoryHandle) => Promise<void>;
   rescanMusic: () => Promise<void>;
   clearLibrary: () => void;
@@ -338,28 +340,32 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
       setSongs([]);
       setCurrentSong(null);
       setQueue([]);
+      setOriginalQueue([]);
+      setPlaylists([]);
       setHasAccess(false);
       storedHandle = null;
       await del('directoryHandle');
       await del('playlists');
       localStorage.removeItem('playbackState');
-      setPlaylists([]);
+      if (audioRef.current) {
+        audioRef.current.src = '';
+      }
   }, []);
 
   useEffect(() => {
     const checkAccess = async () => {
         try {
             const handle = await get<FileSystemDirectoryHandle>('directoryHandle');
+            const storedPlaylists = await get<Playlist[]>('playlists');
+            if (storedPlaylists) {
+                setPlaylists(storedPlaylists);
+            }
             if (handle) {
                 storedHandle = handle;
                 setHasAccess(true);
                 await loadMusicFromHandle(handle, true);
             } else {
                 setIsLoading(false);
-            }
-            const storedPlaylists = await get<Playlist[]>('playlists');
-            if (storedPlaylists) {
-                setPlaylists(storedPlaylists);
             }
         } catch (e) {
             console.error("Could not retrieve data from IndexedDB", e);
@@ -419,32 +425,31 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
 
   const addSongToPlaylist = async (playlistId: string, songId: string) => {
     let playlistName = '';
+    const playlist = playlists.find(p => p.id === playlistId);
+    if (!playlist) return;
+
+    if (playlist.songIds.includes(songId)) {
+        toast({
+            title: 'Song Already in Playlist',
+            description: 'This song is already in the selected playlist.',
+        });
+        return;
+    }
+    
     const updatedPlaylists = playlists.map(p => {
         if (p.id === playlistId) {
             playlistName = p.name;
-            if (p.songIds.includes(songId)) {
-                return p; // Song already exists, do nothing
-            }
             return { ...p, songIds: [...p.songIds, songId] };
         }
         return p;
     });
 
-    const playlist = playlists.find(p => p.id === playlistId);
-    if (playlist && !playlist.songIds.includes(songId)) {
-        toast({
-            title: 'Song Added',
-            description: `Added to "${playlistName}".`,
-        });
-        setPlaylists(updatedPlaylists);
-        await set('playlists', updatedPlaylists);
-    } else if (playlist) {
-        toast({
-            title: 'Song Already in Playlist',
-            description: 'This song is already in the selected playlist.',
-            variant: 'default'
-        });
-    }
+    setPlaylists(updatedPlaylists);
+    await set('playlists', updatedPlaylists);
+    toast({
+        title: 'Song Added',
+        description: `Added to "${playlistName}".`,
+    });
   }
 
   const getPlaylistSongs = (playlistId: string): Song[] => {
@@ -505,10 +510,11 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
       if (repeatMode === 'all') {
         nextIndex = 0;
       } else {
-        // Don't stop, just loop back to start of queue if not repeating all
-        nextIndex = 0;
-        setCurrentSong(queue[nextIndex]);
-        pause(); // stop playing
+        // Stop playing at the end of the queue if not repeating
+        if (audioRef.current) {
+           audioRef.current.currentTime = audioRef.current.duration;
+           pause();
+        }
         return;
       }
     }
@@ -537,6 +543,25 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     }
   }
 
+  const removeFromQueue = (songId: string) => {
+      setQueue(prev => prev.filter(s => s.id !== songId));
+      setOriginalQueue(prev => prev.filter(s => s.id !== songId));
+  }
+
+  const clearQueue = () => {
+      if (currentSong) {
+          setQueue([currentSong]);
+          setOriginalQueue([currentSong]);
+      } else {
+          setQueue([]);
+          setOriginalQueue([]);
+      }
+      toast({
+          title: "Queue Cleared",
+          description: "The 'Up Next' list has been cleared.",
+      })
+  }
+
   const toggleShuffle = () => {
     setIsShuffled(prev => {
         const newShuffleState = !prev;
@@ -544,19 +569,17 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
 
         if (newShuffleState) {
             // Shuffle the rest of the queue, keeping the current song at the top
-            const currentSongIndex = queue.findIndex(s => s.id === currentSong.id);
-            const current = queue[currentSongIndex];
-            const rest = queue.filter((_, i) => i !== currentSongIndex);
-            setQueue([current, ...shuffleArray(rest)]);
+            const currentSongInQueue = queue.find(s => s.id === currentSong.id);
+            if (!currentSongInQueue) return newShuffleState;
+            const rest = queue.filter((s) => s.id !== currentSong.id);
+            setQueue([currentSongInQueue, ...shuffleArray(rest)]);
         } else {
-            // Revert to original order, starting from the current song
+            // Revert to original order, finding current song's position
              const originalIndex = originalQueue.findIndex(s => s.id === currentSong.id);
              if (originalIndex !== -1) {
-                const reordered = originalQueue.slice(originalIndex);
+                const reordered = [...originalQueue];
                 setQueue(reordered);
              } else {
-                // If current song not in original queue (e.g. from search)
-                // just place it at the top of the unshuffled queue
                 setQueue([currentSong, ...originalQueue.filter(s => s.id !== currentSong.id)])
              }
         }
@@ -634,6 +657,8 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         playNextSong,
         playPreviousSong,
         addToQueue,
+        removeFromQueue,
+        clearQueue,
         loadMusic: loadMusicFromHandle,
         rescanMusic,
         clearLibrary,

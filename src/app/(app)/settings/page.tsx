@@ -74,8 +74,8 @@ export default function SettingsPage() {
             })
         } catch (error) {
            console.error('Error accessing directory:', error);
-           if (error instanceof DOMException && error.name === 'AbortError') {
-             // Silently ignore abort errors
+           if (error instanceof DOMException && (error.name === 'AbortError' || error.name === 'NotAllowedError')) {
+             // Silently ignore abort errors or security errors from programatic triggers
            } else {
             toast({
                 title: 'Error',
@@ -156,22 +156,21 @@ export default function SettingsPage() {
       <div className="container mx-auto max-w-3xl pb-28">
         <PageHeader title="Settings" />
         <div className="space-y-8 p-4 md:p-6">
-          {!isPwaInstalled && (
-            <Card>
+          
+          <Card>
               <CardHeader>
                 <CardTitle>Install App</CardTitle>
                 <CardDescription>
                   For a better experience, install the application on your device. 
-                  If the button is disabled, try interacting with the app for a moment.
+                  If the button is disabled, the app is likely already installed or your browser needs a moment to offer the installation.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button onClick={handleInstallClick} disabled={!installPrompt}>
-                  <Smartphone className="mr-2 h-4 w-4" /> Install LightAudio
+                <Button onClick={handleInstallClick} disabled={!installPrompt || isPwaInstalled}>
+                  <Smartphone className="mr-2 h-4 w-4" /> {isPwaInstalled ? 'App Installed' : 'Install LightAudio' }
                 </Button>
               </CardContent>
             </Card>
-          )}
 
           <Card>
             <CardHeader>
@@ -300,7 +299,7 @@ export default function SettingsPage() {
               <CardTitle>Credits</CardTitle>
             </CardHeader>
             <CardContent>
-                <p className="text-sm text-muted-foreground">Version 2.0.1</p>
+                <p className="text-sm text-muted-foreground">Version 2.0.2</p>
                 <p className="text-sm text-muted-foreground mt-1">Made by Victor Martinez on Firebase Studio</p>
             </CardContent>
           </Card>
