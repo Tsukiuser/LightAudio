@@ -4,7 +4,7 @@
 import { useContext } from 'react';
 import Image from 'next/image';
 import type { Song } from '@/lib/types';
-import { MoreHorizontal, ListPlus, Music2, Album as AlbumIcon, X } from 'lucide-react';
+import { MoreHorizontal, ListPlus, Music2, Album as AlbumIcon, X, Info } from 'lucide-react';
 import { Button } from './ui/button';
 import { MusicContext } from '@/context/MusicContext';
 import { cn } from '@/lib/utils';
@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { StaticLogo } from './StaticLogo';
 import { AlbumPlaceholder } from './AlbumPlaceholder';
 import Link from 'next/link';
+import { SongDetailsDialog } from './SongDetailsDialog';
 
 
 interface SongItemProps {
@@ -116,6 +117,12 @@ export function SongItem({ song, queue, onRemove }: SongItemProps) {
                     </DropdownMenuSubContent>
                 </DropdownMenuSub>
                 <DropdownMenuSeparator />
+                <SongDetailsDialog song={song}>
+                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                        <Info className="mr-2 h-4 w-4" />
+                        Details
+                    </DropdownMenuItem>
+                </SongDetailsDialog>
                 <DropdownMenuItem asChild>
                     <Link href={`/album/${encodeURIComponent(song.artist)}/${encodeURIComponent(song.album)}`}>
                         <AlbumIcon className="mr-2 h-4 w-4" />
