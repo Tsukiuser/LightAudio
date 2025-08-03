@@ -6,7 +6,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { FolderSync, RefreshCw, Paintbrush, Undo, Trash2, Palette, Download } from 'lucide-react';
+import { FolderSync, RefreshCw, Paintbrush, Undo, Trash2, Palette, Smartphone } from 'lucide-react';
 import { MusicContext } from '@/context/MusicContext';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -133,17 +133,18 @@ export default function SettingsPage() {
       <div className="container mx-auto max-w-3xl pb-28">
         <PageHeader title="Settings" />
         <div className="space-y-8 p-4 md:p-6">
-          {installPrompt && !isPwaInstalled && (
+          {!isPwaInstalled && (
             <Card>
               <CardHeader>
                 <CardTitle>Install App</CardTitle>
                 <CardDescription>
-                  For a better experience, install the application on your device.
+                  For a better experience, install the application on your device. 
+                  If the button is disabled, try interacting with the app for a moment.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button onClick={handleInstallClick}>
-                  <Download className="mr-2 h-4 w-4" /> Install LightAudio
+                <Button onClick={handleInstallClick} disabled={!installPrompt}>
+                  <Smartphone className="mr-2 h-4 w-4" /> Install LightAudio
                 </Button>
               </CardContent>
             </Card>
