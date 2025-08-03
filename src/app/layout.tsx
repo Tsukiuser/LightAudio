@@ -10,6 +10,7 @@ import { Inter } from 'next/font/google';
 export const metadata: Metadata = {
   title: 'LightAudio',
   description: 'Your local music, reimagined.',
+  manifest: '/manifest.json',
 };
 
 const inter = Inter({
