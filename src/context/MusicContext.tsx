@@ -274,7 +274,13 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
                     audioRef.current.src = restoredSong.url;
                     audioRef.current.load();
                     if (savedState.progress) {
-                        audioRef.current.currentTime = savedState.progress;
+                        const onLoadedData = () => {
+                            if(audioRef.current) {
+                                audioRef.current.currentTime = savedState.progress ?? 0;
+                                audioRef.current.removeEventListener('loadeddata', onLoadedData);
+                            }
+                        }
+                        audioRef.current.addEventListener('loadeddata', onLoadedData);
                     }
                 }
             }
@@ -310,6 +316,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         return () => {
             clearInterval(interval);
             window.removeEventListener('beforeunload', saveState);
+            saveState(); // Final save on component unmount
         };
     }, [currentSong, queue, originalQueue, isShuffled, repeatMode]);
 
@@ -464,6 +471,9 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
 
   const play = () => {
     if (audioRef.current) {
+        if (audioContextRef.current?.state === 'suspended') {
+          audioContextRef.current.resume();
+        }
         audioRef.current.play().catch(e => console.error("Playback failed", e));
     }
   }
@@ -643,5 +653,3 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     </MusicContext.Provider>
   );
 };
-
-    
