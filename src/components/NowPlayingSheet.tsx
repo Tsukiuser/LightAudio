@@ -14,7 +14,6 @@ import { ScrollArea } from './ui/scroll-area';
 import { SongItem } from './SongItem';
 import { MusicVisualizer } from './MusicVisualizer';
 import Link from 'next/link';
-import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 
 interface NowPlayingSheetProps {
     open: boolean;
@@ -135,25 +134,20 @@ export default function NowPlayingSheet({ open, onOpenChange, progress, duration
                             </Button>
                         </SheetTrigger>
                         <SheetContent side="bottom" className="h-4/5 bg-background p-0 flex flex-col">
-                             <SheetHeader className="p-4 border-b flex-row justify-between items-center">
+                             <SheetHeader className="p-4 border-b">
                                 <SheetTitle>Up Next</SheetTitle>
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button variant="ghost" size="icon" onClick={clearQueue} disabled={upNext.length === 0}>
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                            <p>Clear Queue</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
                             </SheetHeader>
                             <ScrollArea className="flex-1">
-                                <div className="px-4 pb-4">
+                                <div className="p-2">
                                     {upNext.length > 0 ? (
-                                        upNext.map((song) => <SongItem key={song.id} song={song} onRemove={() => removeFromQueue?.(song.id)}/>)
+                                        <>
+                                            {upNext.map((song) => <SongItem key={song.id} song={song} onRemove={() => removeFromQueue?.(song.id)}/>)}
+                                             <div className="p-2 mt-2">
+                                                <Button variant="outline" className="w-full" onClick={clearQueue}>
+                                                    <Trash2 className="mr-2 h-4 w-4" /> Clear Queue
+                                                </Button>
+                                            </div>
+                                        </>
                                     ) : (
                                         <p className="p-4 text-center text-sm text-muted-foreground">End of queue.</p>
                                     )}
