@@ -6,7 +6,6 @@ import FileAccessManager from '@/components/FileAccessManager';
 import ThemeManager from '@/components/ThemeManager';
 import { MusicProvider } from '@/context/MusicContext';
 import { Inter } from 'next/font/google';
-import DynamicFavicon from '@/components/DynamicFavicon';
 
 export const metadata: Metadata = {
   title: 'LightAudio',
@@ -27,7 +26,6 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <DynamicFavicon />
       </head>
       <body className={`${inter.variable} font-body antialiased`}>
         <ThemeManager />
