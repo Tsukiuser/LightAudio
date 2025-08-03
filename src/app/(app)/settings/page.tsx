@@ -6,25 +6,59 @@ import { PageHeader } from '@/components/PageHeader';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { FolderSync, RefreshCw, Paintbrush, Undo, Trash2, Palette } from 'lucide-react';
+import { FolderSync, RefreshCw, Paintbrush, Undo, Trash2, Palette, Download } from 'lucide-react';
 import { MusicContext } from '@/context/MusicContext';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 
+interface BeforeInstallPromptEvent extends Event {
+  readonly platforms: string[];
+  readonly userChoice: Promise<{
+    outcome: 'accepted' | 'dismissed';
+    platform: string;
+  }>;
+  prompt(): Promise<void>;
+}
+
+
 export default function SettingsPage() {
     const musicContext = useContext(MusicContext);
     const { toast } = useToast();
     const [backgroundColor, setBackgroundColor] = useState('#26262b');
     const [accentColor, setAccentColor] = useState('#9f8fbf');
+    const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+    const [isPwaInstalled, setIsPwaInstalled] = useState(false);
     
     useEffect(() => {
         const savedBg = localStorage.getItem('theme-background-color');
         const savedAccent = localStorage.getItem('theme-accent-color');
         if (savedBg) setBackgroundColor(savedBg);
         if (savedAccent) setAccentColor(savedAccent);
+
+        const handleBeforeInstallPrompt = (e: Event) => {
+            e.preventDefault();
+            setInstallPrompt(e as BeforeInstallPromptEvent);
+        };
+
+        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+        const checkPwaInstalled = () => {
+            if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone) {
+                setIsPwaInstalled(true);
+            }
+        };
+        checkPwaInstalled();
+
+        return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     }, []);
+
+    const handleInstallClick = () => {
+        if (!installPrompt) return;
+        installPrompt.prompt();
+    }
+
 
     const handleChangeFolder = async () => {
         try {
@@ -99,6 +133,22 @@ export default function SettingsPage() {
       <div className="container mx-auto max-w-3xl pb-28">
         <PageHeader title="Settings" />
         <div className="space-y-8 p-4 md:p-6">
+          {installPrompt && !isPwaInstalled && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Install App</CardTitle>
+                <CardDescription>
+                  For a better experience, install the application on your device.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button onClick={handleInstallClick}>
+                  <Download className="mr-2 h-4 w-4" /> Install LightAudio
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle>Appearance</CardTitle>
@@ -183,7 +233,7 @@ export default function SettingsPage() {
               <CardTitle>Credits</CardTitle>
             </CardHeader>
             <CardContent>
-                <p className="text-sm text-muted-foreground">Version 1.9.4</p>
+                <p className="text-sm text-muted-foreground">Version 1.9.5</p>
                 <p className="text-sm text-muted-foreground mt-1">Made by Victor Martinez on Firebase Studio</p>
             </CardContent>
           </Card>
