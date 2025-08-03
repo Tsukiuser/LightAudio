@@ -83,6 +83,9 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
 
 
   useEffect(() => {
+    // Ensure this runs only once
+    if (audioRef.current) return;
+
     const audioElement = new Audio();
     audioElement.id = 'audio-player-core';
     document.body.appendChild(audioElement);
@@ -130,9 +133,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         document.removeEventListener('click', resumeAudioContext);
         audioRef.current?.removeEventListener('play', handlePlay);
         audioRef.current?.removeEventListener('pause', handlePause);
-        if (audioElement) {
-            document.body.removeChild(audioElement);
-        }
+        // Do not remove the audio element from the body on cleanup
     }
   }, []);
 
@@ -272,26 +273,33 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
   }
 
   const addSongToPlaylist = async (playlistId: string, songId: string) => {
+    let playlistName = '';
     const updatedPlaylists = playlists.map(p => {
         if (p.id === playlistId) {
+            playlistName = p.name;
             if (p.songIds.includes(songId)) {
-                toast({
-                    title: 'Song Already in Playlist',
-                    description: 'This song is already in the selected playlist.',
-                    variant: 'default'
-                });
-                return p;
+                return p; // Song already exists, do nothing
             }
-            toast({
-                title: 'Song Added',
-                description: `Added to "${p.name}".`,
-            });
             return { ...p, songIds: [...p.songIds, songId] };
         }
         return p;
     });
-    setPlaylists(updatedPlaylists);
-    await set('playlists', updatedPlaylists);
+
+    const playlist = playlists.find(p => p.id === playlistId);
+    if (playlist && !playlist.songIds.includes(songId)) {
+        toast({
+            title: 'Song Added',
+            description: `Added to "${playlistName}".`,
+        });
+        setPlaylists(updatedPlaylists);
+        await set('playlists', updatedPlaylists);
+    } else if (playlist) {
+        toast({
+            title: 'Song Already in Playlist',
+            description: 'This song is already in the selected playlist.',
+            variant: 'default'
+        });
+    }
   }
 
   const getPlaylistSongs = (playlistId: string): Song[] => {
@@ -321,14 +329,12 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
   const play = () => {
     if (audioRef.current) {
         audioRef.current.play().catch(e => console.error("Playback failed", e));
-        setIsPlaying(true);
     }
   }
 
   const pause = () => {
     if (audioRef.current) {
         audioRef.current.pause();
-        setIsPlaying(false);
     }
   }
 
@@ -376,27 +382,33 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
 
   const addToQueue = (song: Song) => {
     setQueue(prevQueue => [...prevQueue, song]);
-    setOriginalQueue(prevOrig => [...prevOrig, song]);
+    if (!originalQueue.find(s => s.id === song.id)) {
+        setOriginalQueue(prevOrig => [...prevOrig, song]);
+    }
   }
 
   const toggleShuffle = () => {
     setIsShuffled(prev => {
         const newShuffleState = !prev;
+        if (!currentSong) return newShuffleState;
+
         if (newShuffleState) {
-            const currentSongIndex = queue.findIndex(s => s.id === currentSong?.id);
+            // Shuffle the rest of the queue, keeping the current song at the top
+            const currentSongIndex = queue.findIndex(s => s.id === currentSong.id);
             const current = queue[currentSongIndex];
             const rest = queue.filter((_, i) => i !== currentSongIndex);
             setQueue([current, ...shuffleArray(rest)]);
         } else {
-            // Revert to original order, keeping current song at the top
-            const current = currentSong;
-            if (current) {
-                const originalIndex = originalQueue.findIndex(s => s.id === current.id);
+            // Revert to original order, starting from the current song
+             const originalIndex = originalQueue.findIndex(s => s.id === currentSong.id);
+             if (originalIndex !== -1) {
                 const reordered = originalQueue.slice(originalIndex);
                 setQueue(reordered);
-            } else {
-                setQueue(originalQueue);
-            }
+             } else {
+                // If current song not in original queue (e.g. from search)
+                // just place it at the top of the unshuffled queue
+                setQueue([currentSong, ...originalQueue.filter(s => s.id !== currentSong.id)])
+             }
         }
         return newShuffleState;
     });

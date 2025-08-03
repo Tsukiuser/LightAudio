@@ -4,14 +4,15 @@
 import { useContext } from 'react';
 import Image from 'next/image';
 import type { Song } from '@/lib/types';
-import { MoreHorizontal, ListPlus, Music2 } from 'lucide-react';
+import { MoreHorizontal, ListPlus, Music2, Album as AlbumIcon } from 'lucide-react';
 import { Button } from './ui/button';
 import { MusicContext } from '@/context/MusicContext';
 import { cn } from '@/lib/utils';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { StaticLogo } from './StaticLogo';
 import { AlbumPlaceholder } from './AlbumPlaceholder';
+import Link from 'next/link';
 
 
 interface SongItemProps {
@@ -104,6 +105,13 @@ export function SongItem({ song, queue }: SongItemProps) {
               )}
             </DropdownMenuSubContent>
           </DropdownMenuSub>
+          <DropdownMenuSeparator />
+           <DropdownMenuItem asChild>
+             <Link href={`/album/${encodeURIComponent(song.artist)}/${encodeURIComponent(song.album)}`}>
+                <AlbumIcon className="mr-2 h-4 w-4" />
+                Go to Album
+            </Link>
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
