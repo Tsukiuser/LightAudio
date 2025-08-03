@@ -68,7 +68,7 @@ export default function NowPlayingSheet({ open, onOpenChange, progress, duration
                 </SheetHeader>
                 
                 <div className="flex-1 flex flex-col justify-between p-4 overflow-hidden">
-                    <div className="aspect-square rounded-lg shadow-lg max-w-sm mx-auto overflow-hidden mt-4">
+                    <div className="aspect-square rounded-lg shadow-lg max-w-sm mx-auto overflow-hidden">
                         {currentSong.coverArt ? (
                             <Image
                                 src={currentSong.coverArt}
