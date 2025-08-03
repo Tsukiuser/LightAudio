@@ -3,13 +3,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Search, Library, Settings, Plus } from 'lucide-react';
+import { Home, Search, Library, Settings, Plus, ListMusic } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Separator } from './ui/separator';
 import { useContext } from 'react';
 import { MusicContext } from '@/context/MusicContext';
 import { StaticLogo } from './StaticLogo';
 import { Sidebar, useSidebar } from './ui/sidebar';
+import CreatePlaylistDialog from './CreatePlaylistDialog';
 
 
 const mainNavItems = [
@@ -21,6 +22,7 @@ const mainNavItems = [
 export function AppSidebar() {
   const pathname = usePathname();
   const { state } = useSidebar();
+  const musicContext = useContext(MusicContext);
 
   return (
     <Sidebar>
@@ -62,11 +64,33 @@ export function AppSidebar() {
         <div className="flex-1 p-2 space-y-2 overflow-y-auto">
             <div className={cn("flex justify-between items-center px-2", state === 'collapsed' && 'hidden')}>
                 <h2 className="text-sm font-semibold text-muted-foreground">Playlists</h2>
-                <button className="text-muted-foreground hover:text-foreground">
-                    <Plus className="h-5 w-5"/>
-                </button>
+                <CreatePlaylistDialog>
+                    <button className="text-muted-foreground hover:text-foreground">
+                        <Plus className="h-5 w-5"/>
+                    </button>
+                </CreatePlaylistDialog>
             </div>
-             {/* Playlist items will go here */}
+             {musicContext?.playlists.map((playlist) => {
+                 const isActive = pathname === `/playlist/${playlist.id}`;
+                 return (
+                    <Link
+                        key={playlist.id}
+                        href={`/playlist/${playlist.id}`}
+                         className={cn(
+                            'flex items-center gap-3 rounded-md p-2 text-sm font-medium transition-colors',
+                            state === 'collapsed' && 'justify-center',
+                            isActive
+                            ? 'bg-muted text-foreground'
+                            : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                        )}
+                    >
+                        <ListMusic className="h-5 w-5" />
+                        <span className={cn("truncate", state === 'collapsed' && 'hidden')}>
+                            {playlist.name}
+                        </span>
+                    </Link>
+                 )
+             })}
         </div>
         
         <Separator />

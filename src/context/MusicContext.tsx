@@ -2,7 +2,7 @@
 'use client';
 
 import { createContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
-import type { Song } from '@/lib/types';
+import type { Song, Playlist } from '@/lib/types';
 // @ts-ignore
 import * as music from 'music-metadata-browser';
 import { useToast } from '@/hooks/use-toast';
@@ -12,6 +12,10 @@ type RepeatMode = 'none' | 'all' | 'one';
 
 interface MusicContextType {
   songs: Song[];
+  playlists: Playlist[];
+  createPlaylist: (name: string) => Promise<void>;
+  addSongToPlaylist: (playlistId: string, songId: string) => Promise<void>;
+  getPlaylistSongs: (playlistId: string) => Song[];
   currentSong: Song | null;
   queue: Song[];
   originalQueue: Song[];
@@ -61,6 +65,7 @@ const shuffleArray = <T,>(array: T[]): T[] => {
 
 export const MusicProvider = ({ children }: { children: ReactNode }) => {
   const [songs, setSongs] = useState<Song[]>([]);
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [queue, setQueue] = useState<Song[]>([]);
   const [originalQueue, setOriginalQueue] = useState<Song[]>([]);
@@ -223,6 +228,8 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
       setHasAccess(false);
       storedHandle = null;
       await del('directoryHandle');
+      await del('playlists');
+      setPlaylists([]);
   }, []);
 
   useEffect(() => {
@@ -236,13 +243,63 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
             } else {
                 setIsLoading(false);
             }
+            const storedPlaylists = await get<Playlist[]>('playlists');
+            if (storedPlaylists) {
+                setPlaylists(storedPlaylists);
+            }
         } catch (e) {
-            console.error("Could not retrieve directory handle from IndexedDB", e);
+            console.error("Could not retrieve data from IndexedDB", e);
             setIsLoading(false);
         }
     };
     checkAccess();
   }, [loadMusicFromHandle]);
+
+  const createPlaylist = async (name: string) => {
+    const newPlaylist: Playlist = {
+        id: `playlist-${Date.now()}`,
+        name,
+        songIds: [],
+        createdAt: new Date().toISOString(),
+    };
+    const updatedPlaylists = [...playlists, newPlaylist];
+    setPlaylists(updatedPlaylists);
+    await set('playlists', updatedPlaylists);
+    toast({
+        title: 'Playlist Created',
+        description: `"${name}" has been created.`,
+    })
+  }
+
+  const addSongToPlaylist = async (playlistId: string, songId: string) => {
+    const updatedPlaylists = playlists.map(p => {
+        if (p.id === playlistId) {
+            if (p.songIds.includes(songId)) {
+                toast({
+                    title: 'Song Already in Playlist',
+                    description: 'This song is already in the selected playlist.',
+                    variant: 'default'
+                });
+                return p;
+            }
+            toast({
+                title: 'Song Added',
+                description: `Added to "${p.name}".`,
+            });
+            return { ...p, songIds: [...p.songIds, songId] };
+        }
+        return p;
+    });
+    setPlaylists(updatedPlaylists);
+    await set('playlists', updatedPlaylists);
+  }
+
+  const getPlaylistSongs = (playlistId: string): Song[] => {
+    const playlist = playlists.find(p => p.id === playlistId);
+    if (!playlist) return [];
+    return playlist.songIds.map(songId => songs.find(s => s.id === songId)).filter(Boolean) as Song[];
+  }
+
 
   const playSong = (song: Song, newQueue?: Song[]) => {
     if (audioContextRef.current?.state === 'suspended') {
@@ -356,6 +413,10 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
   return (
     <MusicContext.Provider value={{ 
         songs, 
+        playlists,
+        createPlaylist,
+        addSongToPlaylist,
+        getPlaylistSongs,
         currentSong, 
         queue, 
         originalQueue,

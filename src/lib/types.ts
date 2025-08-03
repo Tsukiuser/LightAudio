@@ -21,3 +21,10 @@ export type Artist = {
   coverArt: string | null;
   albums: Album[];
 };
+
+export type Playlist = {
+    id: string;
+    name: string;
+    songIds: string[];
+    createdAt: string;
+}

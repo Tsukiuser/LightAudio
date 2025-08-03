@@ -4,11 +4,11 @@
 import { useContext } from 'react';
 import Image from 'next/image';
 import type { Song } from '@/lib/types';
-import { MoreHorizontal, ListPlus } from 'lucide-react';
+import { MoreHorizontal, ListPlus, Music2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { MusicContext } from '@/context/MusicContext';
 import { cn } from '@/lib/utils';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { StaticLogo } from './StaticLogo';
 import { AlbumPlaceholder } from './AlbumPlaceholder';
@@ -34,6 +34,10 @@ export function SongItem({ song, queue }: SongItemProps) {
         title: "Added to queue",
         description: `"${song.title}" has been added to the queue.`,
     })
+  }
+
+  const handleAddToPlaylist = (playlistId: string) => {
+    musicContext?.addSongToPlaylist(playlistId, song.id);
   }
   
   return (
@@ -83,6 +87,23 @@ export function SongItem({ song, queue }: SongItemProps) {
             <ListPlus className="mr-2 h-4 w-4" />
             Add to Queue
           </DropdownMenuItem>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+              <Music2 className="mr-2 h-4 w-4" />
+              Add to Playlist
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              {musicContext?.playlists && musicContext.playlists.length > 0 ? (
+                musicContext.playlists.map(playlist => (
+                  <DropdownMenuItem key={playlist.id} onClick={() => handleAddToPlaylist(playlist.id)}>
+                    {playlist.name}
+                  </DropdownMenuItem>
+                ))
+              ) : (
+                <DropdownMenuItem disabled>No playlists found</DropdownMenuItem>
+              )}
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

@@ -2,24 +2,28 @@
 'use client'
 
 import { useContext } from 'react';
+import Link from 'next/link';
 import { PageHeader } from '@/components/PageHeader';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
+import { ListMusic, Plus } from 'lucide-react';
 import { getAlbums, getArtists } from '@/lib/music-utils';
 import { AlbumCard } from '@/components/AlbumCard';
 import { SongItem } from '@/components/SongItem';
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
 import { MusicContext } from '@/context/MusicContext';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AlbumPlaceholder } from '@/components/AlbumPlaceholder';
+import CreatePlaylistDialog from '@/components/CreatePlaylistDialog';
+import { StaticLogo } from '@/components/StaticLogo';
 
 export default function LibraryPage() {
   const musicContext = useContext(MusicContext);
   const allSongs = musicContext?.songs || [];
   const allAlbums = getAlbums(allSongs);
   const allArtists = getArtists(allSongs);
+  const allPlaylists = musicContext?.playlists || [];
 
   return (
     <ScrollArea className="h-full">
@@ -35,11 +39,29 @@ export default function LibraryPage() {
           </TabsList>
 
           <TabsContent value="playlists" className="mt-6">
-            <Button className="w-full md:w-auto">
-              <Plus className="mr-2 h-4 w-4" />
-              Create Playlist
-            </Button>
-            {/* Future playlists will go here */}
+            <CreatePlaylistDialog>
+              <Button className="w-full md:w-auto">
+                <Plus className="mr-2 h-4 w-4" />
+                Create Playlist
+              </Button>
+            </CreatePlaylistDialog>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6 mt-6">
+              {allPlaylists.map((playlist) => (
+                <Link href={`/playlist/${playlist.id}`} key={playlist.id} className="group relative">
+                  <Card className="overflow-hidden transition-all group-hover:shadow-lg group-hover:shadow-primary/20">
+                    <CardContent className="p-0">
+                      <div className="aspect-square w-full bg-muted flex items-center justify-center">
+                        <ListMusic className="h-1/2 w-1/2 text-muted-foreground/50" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <div className="mt-2">
+                    <h3 className="font-semibold text-foreground truncate">{playlist.name}</h3>
+                    <p className="text-sm text-muted-foreground truncate">{playlist.songIds.length} songs</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
           </TabsContent>
 
           <TabsContent value="artists" className="mt-6">
