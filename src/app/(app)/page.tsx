@@ -9,13 +9,48 @@ import { MusicContext } from '@/context/MusicContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SongItem } from '@/components/SongItem';
+import { Button } from '@/components/ui/button';
+import { FolderSync, RefreshCw } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 export default function HomePage() {
   const musicContext = useContext(MusicContext);
+  const { toast } = useToast();
   const songs = musicContext?.songs || [];
   const albums = getAlbums(songs);
   const recentlyAddedAlbums = [...albums].reverse();
   const recentlyAddedSongs = [...songs].reverse().slice(0, 12);
+
+  const handleRescanFolder = async () => {
+    toast({
+        title: 'Rescanning Library',
+        description: 'Please wait while we look for new music.',
+    });
+    await musicContext?.rescanMusic();
+  }
+
+  const handleChangeFolder = async () => {
+    try {
+        // @ts-ignore
+        const dirHandle = await window.showDirectoryPicker();
+        await musicContext?.loadMusic(dirHandle);
+        toast({
+            title: 'Folder Changed',
+            description: 'Your music library is being updated.',
+        })
+    } catch (error) {
+       console.error('Error accessing directory:', error);
+       if (error instanceof DOMException && error.name === 'AbortError') {
+         // Silently ignore abort errors
+       } else {
+        toast({
+            title: 'Error',
+            description: 'Could not access the music folder.',
+            variant: 'destructive'
+        })
+       }
+    }
+  }
 
   if (musicContext?.isLoading) {
     return (
@@ -47,6 +82,31 @@ export default function HomePage() {
             ))}
           </div>
         </section>
+      </div>
+    );
+  }
+
+  if (songs.length === 0) {
+    return (
+      <div className="container mx-auto max-w-7xl px-0">
+        <PageHeader title="Home" />
+        <div className="flex flex-col items-center justify-center text-center p-8 mt-16">
+          <h2 className="text-2xl font-bold mb-2">No Music Found</h2>
+          <p className="text-muted-foreground mb-6 max-w-md">
+            We couldn't find any compatible audio files (.mp3, .flac, .m4a) in the selected folder.
+            Please try rescanning or choose a different folder.
+          </p>
+          <div className="flex gap-4">
+            <Button variant="outline" onClick={handleRescanFolder}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Rescan Folder
+            </Button>
+            <Button onClick={handleChangeFolder}>
+              <FolderSync className="mr-2 h-4 w-4" />
+              Change Folder
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
