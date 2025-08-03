@@ -8,7 +8,7 @@ import { Slider } from './ui/slider';
 import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, ListMusic, Shuffle, Repeat, Repeat1 } from 'lucide-react';
 import { Button } from './ui/button';
 import { formatDuration } from '@/lib/utils';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from './ui/sheet';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { ScrollArea } from './ui/scroll-area';
 import { SongItem } from './SongItem';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils';
 import { AlbumPlaceholder } from './AlbumPlaceholder';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from './ui/tooltip';
 import NowPlayingSheet from './NowPlayingSheet';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import Link from 'next/link';
 
 export default function AudioPlayer() {
   const musicContext = useContext(MusicContext);
@@ -129,7 +129,7 @@ export default function AudioPlayer() {
         <div className={cn(playerBaseClass, playerPositionClass)}>
           <div className="bg-background/80 backdrop-blur-md border-t border-border/80 p-2">
              <div className="container mx-auto flex items-center gap-3">
-                 <div className="h-10 w-10 flex-shrink-0" onClick={() => setIsNowPlayingOpen(true)}>
+                 <div className="h-10 w-10 flex-shrink-0 cursor-pointer" onClick={() => setIsNowPlayingOpen(true)}>
                     {currentSong.coverArt ? (
                       <Image
                         src={currentSong.coverArt}
@@ -143,7 +143,7 @@ export default function AudioPlayer() {
                       <AlbumPlaceholder className="rounded-md h-full w-full" />
                     )}
                  </div>
-                 <div className="flex-1 min-w-0" onClick={() => setIsNowPlayingOpen(true)}>
+                 <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setIsNowPlayingOpen(true)}>
                     <p className="font-medium truncate text-foreground">{currentSong.title}</p>
                     <p className="text-sm text-muted-foreground truncate">{currentSong.artist}</p>
                  </div>
@@ -174,7 +174,7 @@ export default function AudioPlayer() {
       <TooltipProvider>
         <div className="bg-background/80 backdrop-blur-md border-t border-border/80 p-2 md:p-4">
           <div className="container mx-auto flex items-center gap-4">
-              <div className="h-10 w-10 md:h-14 md:w-14 flex-shrink-0">
+            <Link href={`/album/${encodeURIComponent(currentSong.artist)}/${encodeURIComponent(currentSong.album)}`} className="h-10 w-10 md:h-14 md:w-14 flex-shrink-0">
                 {currentSong.coverArt ? (
                   <Image
                     src={currentSong.coverArt}
@@ -187,7 +187,7 @@ export default function AudioPlayer() {
                 ) : (
                   <AlbumPlaceholder className="rounded-md h-full w-full" />
                 )}
-              </div>
+            </Link>
             <div className="flex-1 min-w-0 md:min-w-fit md:w-1/3">
               <p className="font-medium truncate text-foreground">{currentSong.title}</p>
               <p className="text-sm text-muted-foreground truncate">{currentSong.artist}</p>

@@ -13,6 +13,7 @@ import { cn, formatDuration } from '@/lib/utils';
 import { ScrollArea } from './ui/scroll-area';
 import { SongItem } from './SongItem';
 import { MusicVisualizer } from './MusicVisualizer';
+import Link from 'next/link';
 
 interface NowPlayingSheetProps {
     open: boolean;
@@ -68,20 +69,20 @@ export default function NowPlayingSheet({ open, onOpenChange, progress, duration
                 </SheetHeader>
                 
                 <div className="flex-1 flex flex-col justify-between p-4 overflow-hidden">
-                    <div className="aspect-square rounded-lg shadow-lg max-w-sm mx-auto overflow-hidden">
+                    <Link href={`/album/${encodeURIComponent(currentSong.artist)}/${encodeURIComponent(currentSong.album)}`} className="aspect-square rounded-lg shadow-lg max-w-sm mx-auto overflow-hidden group" onClick={() => onOpenChange(false)}>
                         {currentSong.coverArt ? (
                             <Image
                                 src={currentSong.coverArt}
                                 alt={`Cover for ${currentSong.album}`}
                                 width={500}
                                 height={500}
-                                className="h-full w-full object-cover"
+                                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                                 data-ai-hint="album cover"
                             />
                         ) : (
-                            <AlbumPlaceholder className="h-full w-full rounded-lg" />
+                            <AlbumPlaceholder className="h-full w-full rounded-lg transition-transform duration-300 group-hover:scale-105" />
                         )}
-                    </div>
+                    </Link>
                     <div className="text-center mt-4">
                         <h2 className="text-2xl font-bold text-foreground truncate">{currentSong.title}</h2>
                         <p className="text-lg text-muted-foreground truncate">{currentSong.artist}</p>
