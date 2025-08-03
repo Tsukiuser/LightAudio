@@ -52,7 +52,12 @@ export default function FileAccessManager({
 
   if (!musicContext?.hasAccess) {
     return (
-      <div className="flex h-screen w-full flex-col items-center justify-center bg-background p-4 text-center">
+      <div className="relative flex h-screen w-full flex-col items-center justify-center bg-background p-4 text-center">
+        <button
+            onClick={grantAccess}
+            className="absolute top-0 left-0 h-16 w-16 opacity-0"
+            aria-label="Grant folder access (hidden)"
+        />
         <div className="flex flex-col items-center animate-in fade-in-50 duration-1000">
           <StaticLogo className="h-16 w-16 text-primary mb-6" />
           <h1 className="text-3xl font-bold text-foreground mb-2 font-headline">
