@@ -30,6 +30,11 @@ import {
   AlertDialogTrigger,
 } from './ui/alert-dialog';
 
+const mainNavItems = [
+  { href: '/', label: 'Home', icon: Home },
+  { href: '/search', label: 'Search', icon: Search },
+  { href: '/library', label: 'Library', icon: Library },
+];
 
 export function AppSidebar() {
   const pathname = usePathname();
