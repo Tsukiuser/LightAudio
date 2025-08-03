@@ -11,18 +11,34 @@ import { MusicContext } from '@/context/MusicContext';
 import { StaticLogo } from './StaticLogo';
 import { Sidebar, useSidebar } from './ui/sidebar';
 import CreatePlaylistDialog from './CreatePlaylistDialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { RenamePlaylistDialog } from './RenamePlaylistDialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from './ui/alert-dialog';
 
-
-const mainNavItems = [
-  { href: '/', label: 'Home', icon: Home },
-  { href: '/search', label: 'Search', icon: Search },
-  { href: '/library', label: 'Library', icon: Library },
-];
 
 export function AppSidebar() {
   const pathname = usePathname();
   const { state } = useSidebar();
   const musicContext = useContext(MusicContext);
+
+  const handleDeletePlaylist = (playlistId: string) => {
+    musicContext?.deletePlaylist(playlistId);
+  };
 
   return (
     <Sidebar>
@@ -73,22 +89,56 @@ export function AppSidebar() {
              {musicContext?.playlists.map((playlist) => {
                  const isActive = pathname === `/playlist/${playlist.id}`;
                  return (
-                    <Link
-                        key={playlist.id}
-                        href={`/playlist/${playlist.id}`}
-                         className={cn(
-                            'flex items-center gap-3 rounded-md p-2 text-sm font-medium transition-colors',
-                            state === 'collapsed' && 'justify-center',
-                            isActive
-                            ? 'bg-muted text-foreground'
-                            : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-                        )}
-                    >
-                        <ListMusic className="h-5 w-5" />
-                        <span className={cn("truncate", state === 'collapsed' && 'hidden')}>
-                            {playlist.name}
-                        </span>
-                    </Link>
+                  <AlertDialog key={playlist.id}>
+                    <DropdownMenu>
+                       <DropdownMenuTrigger asChild>
+                          <button
+                              className={cn(
+                                  'flex items-center gap-3 rounded-md p-2 text-sm font-medium transition-colors w-full text-left',
+                                  state === 'collapsed' && 'justify-center',
+                                  isActive
+                                  ? 'bg-muted text-foreground'
+                                  : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                              )}
+                              onContextMenu={(e) => {
+                                e.preventDefault();
+                                (e.currentTarget as HTMLButtonElement).click();
+                              }}
+                          >
+                              <ListMusic className="h-5 w-5" />
+                              <Link href={`/playlist/${playlist.id}`} className={cn("truncate flex-1", state === 'collapsed' && 'hidden')}>
+                                  {playlist.name}
+                              </Link>
+                          </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent side="right" align="start">
+                        <RenamePlaylistDialog playlist={playlist}>
+                           <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                            Rename
+                           </DropdownMenuItem>
+                        </RenamePlaylistDialog>
+                        <AlertDialogTrigger asChild>
+                           <DropdownMenuItem className="text-destructive">
+                            Delete
+                           </DropdownMenuItem>
+                        </AlertDialogTrigger>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Delete &quot;{playlist.name}&quot;?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This action cannot be undone. This will permanently delete the playlist.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDeletePlaylist(playlist.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                Delete
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                  )
              })}
         </div>

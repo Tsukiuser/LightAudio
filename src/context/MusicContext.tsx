@@ -7,6 +7,7 @@ import type { Song, Playlist, AppData } from '@/lib/types';
 import * as music from 'music-metadata-browser';
 import { useToast } from '@/hooks/use-toast';
 import { get, set, del } from '@/lib/idb';
+import { useRouter } from 'next/navigation';
 
 type RepeatMode = 'none' | 'all' | 'one';
 
@@ -14,6 +15,8 @@ interface MusicContextType {
   songs: Song[];
   playlists: Playlist[];
   createPlaylist: (name: string) => Promise<void>;
+  renamePlaylist: (playlistId: string, newName: string) => Promise<void>;
+  deletePlaylist: (playlistId: string) => Promise<void>;
   addSongToPlaylist: (playlistId: string, songId: string) => Promise<void>;
   getPlaylistSongs: (playlistId: string) => Song[];
   currentSong: Song | null;
@@ -78,6 +81,8 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
   const [repeatMode, setRepeatMode] = useState<RepeatMode>('none');
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const { toast } = useToast();
+  const router = useRouter();
+
 
   const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -272,6 +277,38 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         title: 'Playlist Created',
         description: `"${name}" has been created.`,
     })
+  }
+
+  const renamePlaylist = async (playlistId: string, newName: string) => {
+    let oldName = '';
+    const updatedPlaylists = playlists.map(p => {
+        if (p.id === playlistId) {
+            oldName = p.name;
+            return { ...p, name: newName };
+        }
+        return p;
+    });
+    setPlaylists(updatedPlaylists);
+    await set('playlists', updatedPlaylists);
+    toast({
+        title: 'Playlist Renamed',
+        description: `"${oldName}" is now "${newName}".`,
+    });
+  }
+
+  const deletePlaylist = async (playlistId: string) => {
+    const playlist = playlists.find(p => p.id === playlistId);
+    if (playlist) {
+      const updatedPlaylists = playlists.filter(p => p.id !== playlistId);
+      setPlaylists(updatedPlaylists);
+      await set('playlists', updatedPlaylists);
+      toast({
+        title: 'Playlist Deleted',
+        description: `"${playlist.name}" has been deleted.`,
+        variant: 'destructive'
+      });
+      // Navigate away if viewing the deleted playlist is complex here. Handled in component.
+    }
   }
 
   const addSongToPlaylist = async (playlistId: string, songId: string) => {
@@ -475,6 +512,8 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         songs, 
         playlists,
         createPlaylist,
+        renamePlaylist,
+        deletePlaylist,
         addSongToPlaylist,
         getPlaylistSongs,
         currentSong, 

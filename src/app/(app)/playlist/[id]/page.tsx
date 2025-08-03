@@ -2,19 +2,33 @@
 'use client'
 
 import { useContext, useEffect, useState, useMemo } from 'react';
-import { notFound } from 'next/navigation';
+import { notFound, useRouter } from 'next/navigation';
 import { MusicContext } from '@/context/MusicContext';
 import type { Playlist, Song } from '@/lib/types';
 import { PageHeader } from '@/components/PageHeader';
 import { SongItem } from '@/components/SongItem';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Play, ListMusic, AlertTriangle } from 'lucide-react';
+import { Play, ListMusic, AlertTriangle, MoreVertical } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { RenamePlaylistDialog } from '@/components/RenamePlaylistDialog';
 
 export default function PlaylistDetailPage({ params }: { params: { id: string } }) {
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
   const musicContext = useContext(MusicContext);
+  const router = useRouter();
   
   useEffect(() => {
     if (musicContext?.playlists) {
@@ -40,6 +54,13 @@ export default function PlaylistDetailPage({ params }: { params: { id: string } 
       musicContext?.playSong(songs[0], songs);
     }
   }
+  
+  const handleDeletePlaylist = () => {
+    if (playlist) {
+      musicContext?.deletePlaylist(playlist.id);
+      router.push('/library');
+    }
+  }
 
   if (musicContext?.isLoading || !playlist) {
     return (
@@ -62,7 +83,41 @@ export default function PlaylistDetailPage({ params }: { params: { id: string } 
   return (
     <ScrollArea className="h-full">
       <div className="container mx-auto max-w-7xl px-0 pb-8">
-        <PageHeader title="" />
+        <PageHeader title="">
+            <AlertDialog>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                            <MoreVertical />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                         <RenamePlaylistDialog playlist={playlist}>
+                            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                              Rename Playlist
+                            </DropdownMenuItem>
+                        </RenamePlaylistDialog>
+                        <AlertDialogTrigger asChild>
+                            <DropdownMenuItem className="text-destructive">Delete Playlist</DropdownMenuItem>
+                        </AlertDialogTrigger>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete &quot;{playlist.name}&quot;?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete the playlist.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeletePlaylist} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </PageHeader>
         <div className="px-4 md:px-6">
             <div className="flex flex-col md:flex-row items-center md:items-start gap-6 md:gap-8">
                 <div className="h-48 w-48 md:h-64 md:w-64 rounded-lg shadow-lg flex-shrink-0 bg-muted flex items-center justify-center">
