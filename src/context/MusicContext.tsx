@@ -8,10 +8,13 @@ import * as music from 'music-metadata-browser';
 import { useToast } from '@/hooks/use-toast';
 import { get, set, del } from '@/lib/idb';
 
+type RepeatMode = 'none' | 'all' | 'one';
+
 interface MusicContextType {
   songs: Song[];
   currentSong: Song | null;
   queue: Song[];
+  originalQueue: Song[];
   playSong: (song: Song, newQueue?: Song[]) => void;
   playNextSong: () => void;
   playPreviousSong: () => void;
@@ -26,6 +29,10 @@ interface MusicContextType {
   analyser: AnalyserNode | null;
   play: () => void;
   pause: () => void;
+  isShuffled: boolean;
+  repeatMode: RepeatMode;
+  toggleShuffle: () => void;
+  toggleRepeat: () => void;
 }
 
 export const MusicContext = createContext<MusicContextType | null>(null);
@@ -43,13 +50,25 @@ async function verifyPermission(directoryHandle: FileSystemDirectoryHandle) {
     return false;
 }
 
+const shuffleArray = <T,>(array: T[]): T[] => {
+  const newArray = [...array];
+  for (let i = newArray.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+  }
+  return newArray;
+};
+
 export const MusicProvider = ({ children }: { children: ReactNode }) => {
   const [songs, setSongs] = useState<Song[]>([]);
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [queue, setQueue] = useState<Song[]>([]);
+  const [originalQueue, setOriginalQueue] = useState<Song[]>([]);
   const [hasAccess, setHasAccess] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isShuffled, setIsShuffled] = useState(false);
+  const [repeatMode, setRepeatMode] = useState<RepeatMode>('none');
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const { toast } = useToast();
 
@@ -59,7 +78,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
 
 
   useEffect(() => {
-    const audioElement = document.createElement('audio');
+    const audioElement = new Audio();
     audioElement.id = 'audio-player-core';
     document.body.appendChild(audioElement);
     audioRef.current = audioElement;
@@ -230,46 +249,68 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
       audioContextRef.current.resume();
     }
     setCurrentSong(song);
-    if (newQueue) {
-      setQueue(newQueue);
+    
+    const songsToQueue = newQueue || songs.slice(songs.findIndex(s => s.id === song.id));
+    setOriginalQueue(songsToQueue);
+
+    if (isShuffled) {
+        const shuffledQueue = shuffleArray(songsToQueue.filter(s => s.id !== song.id));
+        setQueue([song, ...shuffledQueue]);
     } else {
-      const songIndex = songs.findIndex(s => s.id === song.id);
-      if(songIndex !== -1) {
-        setQueue(songs.slice(songIndex));
-      } else {
-        setQueue([song]);
-      }
+        setQueue(songsToQueue);
     }
   };
 
   const play = () => {
     if (audioRef.current) {
         audioRef.current.play().catch(e => console.error("Playback failed", e));
+        setIsPlaying(true);
     }
   }
 
   const pause = () => {
     if (audioRef.current) {
         audioRef.current.pause();
+        setIsPlaying(false);
     }
   }
 
   const playNextSong = () => {
     if (!currentSong || queue.length === 0) return;
-    const currentIndex = queue.findIndex(s => s.id === currentSong.id);
-    if (currentIndex === -1 || currentIndex === queue.length - 1) {
-      // End of queue or song not found, stop playback
+    
+    if (repeatMode === 'one') {
       if (audioRef.current) {
-        audioRef.current.src = "";
+        audioRef.current.currentTime = 0;
+        play();
       }
-      setCurrentSong(null);
       return;
     }
-    setCurrentSong(queue[currentIndex + 1]);
+
+    const currentIndex = queue.findIndex(s => s.id === currentSong.id);
+    if (currentIndex === -1) return;
+
+    let nextIndex = currentIndex + 1;
+    if (nextIndex >= queue.length) {
+      if (repeatMode === 'all') {
+        nextIndex = 0;
+      } else {
+        setCurrentSong(null);
+        setIsPlaying(false);
+        return;
+      }
+    }
+    
+    setCurrentSong(queue[nextIndex]);
   };
 
   const playPreviousSong = () => {
     if (!currentSong || queue.length === 0) return;
+
+    if (audioRef.current && audioRef.current.currentTime > 3) {
+      audioRef.current.currentTime = 0;
+      return;
+    }
+
     const currentIndex = queue.findIndex(s => s.id === currentSong.id);
     if (currentIndex > 0) {
       setCurrentSong(queue[currentIndex - 1]);
@@ -278,6 +319,38 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
 
   const addToQueue = (song: Song) => {
     setQueue(prevQueue => [...prevQueue, song]);
+    setOriginalQueue(prevOrig => [...prevOrig, song]);
+  }
+
+  const toggleShuffle = () => {
+    setIsShuffled(prev => {
+        const newShuffleState = !prev;
+        if (newShuffleState) {
+            const currentSongIndex = queue.findIndex(s => s.id === currentSong?.id);
+            const current = queue[currentSongIndex];
+            const rest = queue.filter((_, i) => i !== currentSongIndex);
+            setQueue([current, ...shuffleArray(rest)]);
+        } else {
+            // Revert to original order, keeping current song at the top
+            const current = currentSong;
+            if (current) {
+                const originalIndex = originalQueue.findIndex(s => s.id === current.id);
+                const reordered = originalQueue.slice(originalIndex);
+                setQueue(reordered);
+            } else {
+                setQueue(originalQueue);
+            }
+        }
+        return newShuffleState;
+    });
+  }
+
+  const toggleRepeat = () => {
+    setRepeatMode(prev => {
+        if (prev === 'none') return 'all';
+        if (prev === 'all') return 'one';
+        return 'none';
+    })
   }
 
   return (
@@ -285,6 +358,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         songs, 
         currentSong, 
         queue, 
+        originalQueue,
         playSong, 
         playNextSong,
         playPreviousSong,
@@ -298,7 +372,11 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         audioRef,
         analyser,
         play,
-        pause
+        pause,
+        isShuffled,
+        repeatMode,
+        toggleShuffle,
+        toggleRepeat
     }}>
       {children}
     </MusicContext.Provider>

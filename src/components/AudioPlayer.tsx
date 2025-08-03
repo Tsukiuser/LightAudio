@@ -1,11 +1,11 @@
 
 'use client';
 
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useState }from 'react';
 import Image from 'next/image';
 import { MusicContext } from '@/context/MusicContext';
 import { Slider } from './ui/slider';
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, ListMusic } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, ListMusic, Shuffle, Repeat, Repeat1 } from 'lucide-react';
 import { Button } from './ui/button';
 import { formatDuration } from '@/lib/utils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from './ui/sheet';
@@ -15,11 +15,11 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { StaticLogo } from './StaticLogo';
 import { cn } from '@/lib/utils';
 import { AlbumPlaceholder } from './AlbumPlaceholder';
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 
 export default function AudioPlayer() {
   const musicContext = useContext(MusicContext);
   const audioRef = musicContext?.audioRef;
-  const isPlaying = musicContext?.isPlaying ?? false;
 
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -73,7 +73,7 @@ export default function AudioPlayer() {
 
   const togglePlayPause = () => {
     if (!musicContext?.currentSong) return;
-    if (isPlaying) {
+    if (musicContext.isPlaying) {
       musicContext.pause();
     } else {
       musicContext.play();
@@ -106,12 +106,11 @@ export default function AudioPlayer() {
     musicContext?.playPreviousSong();
   }
 
-
   if (!musicContext?.currentSong) {
     return null;
   }
   
-  const { currentSong, queue } = musicContext;
+  const { currentSong, queue, isPlaying, isShuffled, repeatMode, toggleShuffle, toggleRepeat } = musicContext;
   const currentSongIndexInQueue = queue.findIndex(s => s.id === currentSong.id);
   const upNext = queue.slice(currentSongIndexInQueue + 1);
 
@@ -145,7 +144,17 @@ export default function AudioPlayer() {
           </div>
 
           <div className="flex-1 flex flex-col items-center justify-center gap-2">
-            <div className="flex items-center gap-2 md:gap-4">
+            <div className="flex items-center gap-1 md:gap-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className={cn("h-10 w-10", isShuffled && "text-primary")} onClick={toggleShuffle}>
+                    <Shuffle className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Shuffle</p>
+                </TooltipContent>
+              </Tooltip>
               <Button variant="ghost" size="icon" className="h-10 w-10" onClick={handleSkipBack} disabled={queue.length <= 1}>
                 <SkipBack className="h-5 w-5" />
               </Button>
@@ -155,6 +164,16 @@ export default function AudioPlayer() {
               <Button variant="ghost" size="icon" className="h-10 w-10" onClick={handleSkipForward} disabled={queue.length <= 1}>
                 <SkipForward className="h-5 w-5" />
               </Button>
+              <Tooltip>
+                 <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className={cn("h-10 w-10", repeatMode !== 'none' && "text-primary")} onClick={toggleRepeat}>
+                        {repeatMode === 'one' ? <Repeat1 className="h-4 w-4" /> : <Repeat className="h-4 w-4" />}
+                    </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                    {repeatMode === 'none' ? <p>Repeat Off</p> : repeatMode === 'all' ? <p>Repeat All</p> : <p>Repeat One</p>}
+                </TooltipContent>
+              </Tooltip>
             </div>
             <div className="w-full flex items-center gap-2">
                 <span className="text-xs text-muted-foreground w-10 text-right">{formatDuration(progress)}</span>
