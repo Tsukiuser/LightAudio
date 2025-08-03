@@ -9,7 +9,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { SongItem } from '@/components/SongItem';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Play, ListMusic, AlertTriangle, MoreVertical } from 'lucide-react';
+import { Play, ListMusic, AlertTriangle, MoreHorizontal } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
@@ -83,41 +83,7 @@ export default function PlaylistDetailPage({ params }: { params: { id: string } 
   return (
     <ScrollArea className="h-full">
       <div className="container mx-auto max-w-7xl px-0 pb-8">
-        <PageHeader title="">
-            <AlertDialog>
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                            <MoreVertical />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                         <RenamePlaylistDialog playlist={playlist}>
-                            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                              Rename Playlist
-                            </DropdownMenuItem>
-                        </RenamePlaylistDialog>
-                        <AlertDialogTrigger asChild>
-                            <DropdownMenuItem className="text-destructive">Delete Playlist</DropdownMenuItem>
-                        </AlertDialogTrigger>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Delete &quot;{playlist.name}&quot;?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete the playlist.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeletePlaylist} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                            Delete
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-        </PageHeader>
+        <PageHeader title="" />
         <div className="px-4 md:px-6">
             <div className="flex flex-col md:flex-row items-center md:items-start gap-6 md:gap-8">
                 <div className="h-48 w-48 md:h-64 md:w-64 rounded-lg shadow-lg flex-shrink-0 bg-muted flex items-center justify-center">
@@ -127,9 +93,44 @@ export default function PlaylistDetailPage({ params }: { params: { id: string } 
                     <p className="text-sm font-medium text-muted-foreground uppercase">Playlist</p>
                     <h1 className="text-3xl md:text-5xl font-bold mt-1 text-foreground break-words">{playlist.name}</h1>
                     <p className="text-sm text-muted-foreground mt-2">{songs.length} songs</p>
-                    <Button onClick={handlePlayPlaylist} className="mt-4" disabled={songs.length === 0}>
-                        <Play className="mr-2 h-4 w-4" /> Play
-                    </Button>
+                    <div className="flex items-center gap-2 mt-4">
+                        <Button onClick={handlePlayPlaylist} disabled={songs.length === 0}>
+                            <Play className="mr-2 h-4 w-4" /> Play
+                        </Button>
+                        <AlertDialog>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline" size="icon" className="h-10 w-10">
+                                        <MoreHorizontal />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <RenamePlaylistDialog playlist={playlist}>
+                                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                        Rename Playlist
+                                        </DropdownMenuItem>
+                                    </RenamePlaylistDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <DropdownMenuItem className="text-destructive">Delete Playlist</DropdownMenuItem>
+                                    </AlertDialogTrigger>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete &quot;{playlist.name}&quot;?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This action cannot be undone. This will permanently delete the playlist.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleDeletePlaylist} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                        Delete
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    </div>
                 </div>
             </div>
         </div>

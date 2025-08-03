@@ -11,13 +11,16 @@ import { SongItem } from '@/components/SongItem';
 import { notFound } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Play } from 'lucide-react';
+import { Play, MoreHorizontal, ListPlus, Music2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AlbumPlaceholder } from '@/components/AlbumPlaceholder';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/components/ui/dropdown-menu';
+import { useToast } from '@/hooks/use-toast';
 
 export default function AlbumDetailPage({ params }: { params: { artist: string; album: string } }) {
   const [album, setAlbum] = useState<Album | null>(null);
   const musicContext = useContext(MusicContext);
+  const { toast } = useToast();
   
   useEffect(() => {
     if (musicContext?.songs) {
@@ -39,6 +42,23 @@ export default function AlbumDetailPage({ params }: { params: { artist: string; 
       musicContext?.playSong(album.songs[0], album.songs);
     }
   }
+
+  const handleAddToQueue = () => {
+    if (album) {
+        album.songs.forEach(song => musicContext?.addToQueue(song));
+        toast({
+            title: "Added to queue",
+            description: `All songs from "${album.name}" have been added to the queue.`,
+        });
+    }
+  }
+
+  const handleAddToPlaylist = (playlistId: string) => {
+    if (album) {
+        album.songs.forEach(song => musicContext?.addSongToPlaylist(playlistId, song.id));
+    }
+  }
+
 
   if (musicContext?.isLoading || !album) {
     return (
@@ -83,9 +103,41 @@ export default function AlbumDetailPage({ params }: { params: { artist: string; 
                     <h1 className="text-3xl md:text-5xl font-bold mt-1 text-foreground break-words">{album.name}</h1>
                     <h2 className="text-xl md:text-2xl text-muted-foreground mt-2">{album.artist}</h2>
                     <p className="text-sm text-muted-foreground mt-2">{album.songs.length} songs</p>
-                    <Button onClick={handlePlayAlbum} className="mt-4">
-                        <Play className="mr-2 h-4 w-4" /> Play Album
-                    </Button>
+                    <div className="flex items-center gap-2 mt-4">
+                        <Button onClick={handlePlayAlbum}>
+                            <Play className="mr-2 h-4 w-4" /> Play Album
+                        </Button>
+                         <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="icon" className="h-10 w-10">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={handleAddToQueue}>
+                                    <ListPlus className="mr-2 h-4 w-4" />
+                                    Add to Queue
+                                </DropdownMenuItem>
+                                <DropdownMenuSub>
+                                    <DropdownMenuSubTrigger>
+                                        <Music2 className="mr-2 h-4 w-4" />
+                                        Add to Playlist
+                                    </DropdownMenuSubTrigger>
+                                    <DropdownMenuSubContent>
+                                    {musicContext?.playlists && musicContext.playlists.length > 0 ? (
+                                        musicContext.playlists.map(playlist => (
+                                        <DropdownMenuItem key={playlist.id} onClick={() => handleAddToPlaylist(playlist.id)}>
+                                            {playlist.name}
+                                        </DropdownMenuItem>
+                                        ))
+                                    ) : (
+                                        <DropdownMenuItem disabled>No playlists found</DropdownMenuItem>
+                                    )}
+                                    </DropdownMenuSubContent>
+                                </DropdownMenuSub>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
                 </div>
             </div>
         </div>
