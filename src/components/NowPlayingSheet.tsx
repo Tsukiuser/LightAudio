@@ -3,12 +3,12 @@
 
 import { useContext } from 'react';
 import Image from 'next/image';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from '@/components/ui/sheet';
 import { MusicContext } from '@/context/MusicContext';
 import { AlbumPlaceholder } from './AlbumPlaceholder';
 import { Slider } from './ui/slider';
 import { Button } from './ui/button';
-import { Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, ChevronUp } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1, ChevronUp, X } from 'lucide-react';
 import { cn, formatDuration } from '@/lib/utils';
 import { ScrollArea } from './ui/scroll-area';
 import { SongItem } from './SongItem';
@@ -56,9 +56,19 @@ export default function NowPlayingSheet({ open, onOpenChange, progress, duration
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent side="bottom" className="h-full bg-background p-0 border-0 flex flex-col">
-                <div className="p-6 flex-shrink-0">
-                    <div className="aspect-square rounded-lg shadow-lg max-w-sm mx-auto overflow-hidden">
+            <SheetContent side="bottom" className="h-full bg-background p-0 border-0 flex flex-col" hideCloseButton>
+                <SheetHeader className="p-4 flex-row items-center justify-between border-b flex-shrink-0">
+                    <SheetClose asChild>
+                        <Button variant="ghost" size="icon">
+                            <X className="h-5 w-5" />
+                        </Button>
+                    </SheetClose>
+                    <SheetTitle className="text-center truncate">Now Playing</SheetTitle>
+                    <MusicVisualizer numBars={4} className="w-5 h-5" />
+                </SheetHeader>
+                
+                <div className="flex-1 flex flex-col justify-between p-4 overflow-hidden">
+                    <div className="aspect-square rounded-lg shadow-lg max-w-sm mx-auto overflow-hidden mt-4">
                         {currentSong.coverArt ? (
                             <Image
                                 src={currentSong.coverArt}
@@ -72,43 +82,43 @@ export default function NowPlayingSheet({ open, onOpenChange, progress, duration
                             <AlbumPlaceholder className="h-full w-full rounded-lg" />
                         )}
                     </div>
-                    <div className="text-center mt-6">
-                        <h2 className="text-2xl font-bold text-foreground">{currentSong.title}</h2>
-                        <p className="text-lg text-muted-foreground">{currentSong.artist}</p>
+                    <div className="text-center mt-4">
+                        <h2 className="text-2xl font-bold text-foreground truncate">{currentSong.title}</h2>
+                        <p className="text-lg text-muted-foreground truncate">{currentSong.artist}</p>
                     </div>
-                </div>
 
-                <div className="px-6 space-y-4 flex-shrink-0 flex-grow flex flex-col justify-around">
-                    <div>
-                        <Slider
-                            value={[progress]}
-                            max={duration || 0}
-                            step={1}
-                            onValueChange={onSeek}
-                            className="w-full"
-                        />
-                        <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                            <span>{formatDuration(progress)}</span>
-                            <span>{formatDuration(duration)}</span>
+                    <div className="space-y-4 mt-4">
+                        <div>
+                            <Slider
+                                value={[progress]}
+                                max={duration || 0}
+                                step={1}
+                                onValueChange={onSeek}
+                                className="w-full"
+                            />
+                            <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                                <span>{formatDuration(progress)}</span>
+                                <span>{formatDuration(duration)}</span>
+                            </div>
                         </div>
-                    </div>
 
-                    <div className="flex justify-center items-center gap-2">
-                        <Button variant="ghost" size="icon" className={cn("h-12 w-12", isShuffled && "text-primary")} onClick={toggleShuffle}>
-                            <Shuffle className="h-5 w-5" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-12 w-12" onClick={playPreviousSong} disabled={queue.length <= 1}>
-                            <SkipBack className="h-6 w-6" />
-                        </Button>
-                        <Button variant="default" size="icon" className="h-16 w-16 rounded-full" onClick={togglePlayPause}>
-                            {isPlaying ? <Pause className="h-8 w-8" /> : <Play className="h-8 w-8 fill-current" />}
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-12 w-12" onClick={playNextSong} disabled={queue.length <= 1}>
-                            <SkipForward className="h-6 w-6" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className={cn("h-12 w-12", repeatMode !== 'none' && "text-primary")} onClick={toggleRepeat}>
-                            {repeatMode === 'one' ? <Repeat1 className="h-5 w-5" /> : <Repeat className="h-5 w-5" />}
-                        </Button>
+                        <div className="flex justify-center items-center gap-1">
+                            <Button variant="ghost" size="icon" className={cn("h-12 w-12", isShuffled && "text-primary")} onClick={toggleShuffle}>
+                                <Shuffle className="h-5 w-5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-12 w-12" onClick={playPreviousSong} disabled={queue.length <= 1}>
+                                <SkipBack className="h-6 w-6" />
+                            </Button>
+                            <Button variant="default" size="icon" className="h-16 w-16 rounded-full" onClick={togglePlayPause}>
+                                {isPlaying ? <Pause className="h-8 w-8" /> : <Play className="h-8 w-8 fill-current" />}
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-12 w-12" onClick={playNextSong} disabled={queue.length <= 1}>
+                                <SkipForward className="h-6 w-6" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className={cn("h-12 w-12", repeatMode !== 'none' && "text-primary")} onClick={toggleRepeat}>
+                                {repeatMode === 'one' ? <Repeat1 className="h-5 w-5" /> : <Repeat className="h-5 w-5" />}
+                            </Button>
+                        </div>
                     </div>
                 </div>
                 
@@ -123,7 +133,6 @@ export default function NowPlayingSheet({ open, onOpenChange, progress, duration
                         <SheetContent side="bottom" className="h-4/5 bg-background p-0 flex flex-col">
                              <SheetHeader className="p-4 border-b flex-row justify-between items-center">
                                 <SheetTitle>Up Next</SheetTitle>
-                                {isPlaying && <MusicVisualizer numBars={4} className="w-5 h-5" />}
                             </SheetHeader>
                             <ScrollArea className="flex-1">
                                 <div className="px-4 pb-4">
