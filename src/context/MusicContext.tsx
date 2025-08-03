@@ -190,7 +190,9 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const loadMusicFromHandle = useCallback(async (dirHandle: FileSystemDirectoryHandle, isInitialLoad = false) => {
-    if (!isInitialLoad) setIsLoading(true);
+    if (!isInitialLoad) {
+      setIsLoading(true);
+    }
     
     const permissionGranted = await verifyPermission(dirHandle);
     if (!permissionGranted) {
@@ -207,9 +209,11 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         return;
     }
 
-    setHasAccess(true);
-    storedHandle = dirHandle;
-    await set('directoryHandle', dirHandle);
+    if (!hasAccess) setHasAccess(true);
+    if (!storedHandle) {
+        storedHandle = dirHandle;
+        await set('directoryHandle', dirHandle);
+    }
 
     const newSongs: Song[] = [];
     
@@ -251,55 +255,64 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     } catch(e) {
         console.error("Error reading music files", e);
     }
-    
-    setSongs(newSongs);
 
-    // After songs are loaded, restore playback state
-    const savedState = loadPlaybackState();
-    if (savedState) {
-        if (savedState.isShuffled) setIsShuffled(savedState.isShuffled);
-        if (savedState.repeatMode) setRepeatMode(savedState.repeatMode);
-        if (savedState.volume !== undefined && audioRef.current) audioRef.current.volume = savedState.volume;
+    const existingSongIds = new Set(songs.map(s => s.id));
+    const newSongIds = new Set(newSongs.map(s => s.id));
+    const hasChanged = newSongs.length !== songs.length || ![...newSongIds].every(id => existingSongIds.has(id));
 
-        const restoredQueue = (savedState.queueIds || [])
-            .map(id => newSongs.find(s => s.id === id))
-            .filter((s): s is Song => !!s);
-        setQueue(restoredQueue);
+    if (hasChanged) {
+        setSongs(newSongs);
 
-        const restoredOriginalQueue = (savedState.originalQueueIds || [])
-            .map(id => newSongs.find(s => s.id === id))
-            .filter((s): s is Song => !!s);
-        setOriginalQueue(restoredOriginalQueue);
+        // After songs are loaded, restore playback state if it's the first time
+        if (isInitialLoad) {
+            const savedState = loadPlaybackState();
+            if (savedState) {
+                if (savedState.isShuffled) setIsShuffled(savedState.isShuffled);
+                if (savedState.repeatMode) setRepeatMode(savedState.repeatMode);
+                if (savedState.volume !== undefined && audioRef.current) audioRef.current.volume = savedState.volume;
 
-        if (savedState.currentSongId) {
-            const restoredSong = newSongs.find(s => s.id === savedState.currentSongId);
-            if (restoredSong) {
-                setCurrentSong(restoredSong);
-                if (audioRef.current) {
-                    audioRef.current.src = restoredSong.url;
-                    audioRef.current.load();
-                    if (savedState.progress) {
-                        const onLoadedData = () => {
-                            if(audioRef.current) {
-                                audioRef.current.currentTime = savedState.progress ?? 0;
-                                audioRef.current.removeEventListener('loadeddata', onLoadedData);
+                const restoredQueue = (savedState.queueIds || [])
+                    .map(id => newSongs.find(s => s.id === id))
+                    .filter((s): s is Song => !!s);
+                setQueue(restoredQueue);
+
+                const restoredOriginalQueue = (savedState.originalQueueIds || [])
+                    .map(id => newSongs.find(s => s.id === id))
+                    .filter((s): s is Song => !!s);
+                setOriginalQueue(restoredOriginalQueue);
+
+                if (savedState.currentSongId) {
+                    const restoredSong = newSongs.find(s => s.id === savedState.currentSongId);
+                    if (restoredSong) {
+                        setCurrentSong(restoredSong);
+                        if (audioRef.current) {
+                            audioRef.current.src = restoredSong.url;
+                            audioRef.current.load();
+                            if (savedState.progress) {
+                                const onLoadedData = () => {
+                                    if(audioRef.current) {
+                                        audioRef.current.currentTime = savedState.progress ?? 0;
+                                        audioRef.current.removeEventListener('loadeddata', onLoadedData);
+                                    }
+                                }
+                                audioRef.current.addEventListener('loadeddata', onLoadedData);
                             }
                         }
-                        audioRef.current.addEventListener('loadeddata', onLoadedData);
                     }
                 }
             }
         }
+        if (newSongs.length > 0 && !isInitialLoad) {
+          toast({
+              title: 'Library Updated',
+              description: `Found ${newSongs.length} songs.`,
+          })
+        }
     }
     
-    setIsLoading(false);
-    if (newSongs.length > 0 && !isInitialLoad) {
-        toast({
-            title: 'Library Updated',
-            description: `Found ${newSongs.length} songs.`,
-        })
-    }
-  }, [toast]);
+    if (isLoading) setIsLoading(false);
+
+  }, [toast, hasAccess, isLoading, songs]);
 
   // Effect to save state whenever it changes
     useEffect(() => {
@@ -329,7 +342,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
 
   const rescanMusic = useCallback(async () => {
     if (storedHandle) {
-        await loadMusicFromHandle(storedHandle);
+        await loadMusicFromHandle(storedHandle, false);
     } else {
         toast({
             title: 'No Folder Selected',
@@ -366,12 +379,30 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
             if (handle) {
                 storedHandle = handle;
                 setHasAccess(true);
-                // On mobile, don't automatically scan as permissions are not persistent.
-                // The user will be prompted to grant access again when they try to play a song.
+
+                // Load playback state first to restore UI instantly
+                const savedState = loadPlaybackState();
+                if(savedState && savedState.currentSongId) {
+                  // This is a bit of a hack: create a dummy song list
+                  // to allow UI to render something while we scan in background.
+                  // The real data will come from the background scan.
+                  const dummySongs = [
+                    ...((savedState.queueIds || []).map(id => ({ id, title: 'Loading...', artist: '', album: '', duration: '', coverArt: null, url: ''}))),
+                    ...((savedState.originalQueueIds || []).map(id => ({ id, title: 'Loading...', artist: '', album: '', duration: '', coverArt: null, url: ''})))
+                  ];
+                  setSongs(dummySongs as Song[]);
+
+                  const restoredQueue = (savedState.queueIds || [])
+                    .map(id => dummySongs.find(s => s.id === id))
+                    .filter((s): s is Song => !!s);
+                  setQueue(restoredQueue);
+                }
+
                 if (!isMobile) {
+                    setIsLoading(false); // Don't show loading screen on desktop
                     await loadMusicFromHandle(handle, true);
                 } else {
-                    setIsLoading(false);
+                    setIsLoading(false); // On mobile, just load and wait for user action
                 }
             } else {
                 setIsLoading(false);
