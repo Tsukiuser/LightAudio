@@ -4,7 +4,7 @@
 import { useContext } from 'react';
 import Image from 'next/image';
 import type { Song } from '@/lib/types';
-import { MoreHorizontal, ListPlus, Music2, Album as AlbumIcon, X, Info } from 'lucide-react';
+import { MoreHorizontal, ListPlus, Music2, Album as AlbumIcon, X, Info, GripVertical } from 'lucide-react';
 import { Button } from './ui/button';
 import { MusicContext } from '@/context/MusicContext';
 import { cn } from '@/lib/utils';
@@ -20,16 +20,18 @@ interface SongItemProps {
   song: Song;
   queue?: Song[]; // Optional: The queue to set when this song is played
   onRemove?: () => void; // Optional: Callback to remove song from a list
+  dragHandleProps?: any; // For dnd-kit
+  isDragging?: boolean; // For dnd-kit
 }
 
-export function SongItem({ song, queue, onRemove }: SongItemProps) {
+export function SongItem({ song, queue, onRemove, dragHandleProps, isDragging }: SongItemProps) {
   const musicContext = useContext(MusicContext);
   const isCurrentSong = musicContext?.currentSong?.id === song.id;
   const { toast } = useToast();
 
   const handlePlay = () => {
-    // Don't play if we're trying to remove it
-    if (onRemove) return;
+    // Don't play if we're trying to remove it or drag it
+    if (onRemove || dragHandleProps) return;
     musicContext?.playSong(song, queue);
   };
 
@@ -48,12 +50,18 @@ export function SongItem({ song, queue, onRemove }: SongItemProps) {
   return (
     <div 
       className={cn(
-        "flex items-center gap-4 p-2 rounded-md hover:bg-muted/50 transition-colors w-full group",
-        isCurrentSong && "bg-primary/10 hover:bg-primary/20"
+        "flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 transition-colors w-full group",
+        isCurrentSong && !dragHandleProps && "bg-primary/10 hover:bg-primary/20",
+        isDragging && "opacity-50 bg-primary/20"
       )}
     >
+      {dragHandleProps && (
+        <div {...dragHandleProps} className="p-2 cursor-grab touch-none">
+            <GripVertical className="h-5 w-5 text-muted-foreground"/>
+        </div>
+      )}
       <div 
-        className="flex items-center gap-4 flex-1 min-w-0 cursor-pointer"
+        className="flex items-center gap-4 flex-1 min-w-0"
         onClick={handlePlay}
       >
         <div className="relative h-10 w-10 flex-shrink-0">
@@ -69,14 +77,14 @@ export function SongItem({ song, queue, onRemove }: SongItemProps) {
           ) : (
              <AlbumPlaceholder className="rounded-md h-10 w-10"/>
           )}
-          {isCurrentSong && !onRemove && (
+          {isCurrentSong && !onRemove && !dragHandleProps && (
               <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-md">
                   <StaticLogo className="h-5 w-5 text-white" />
               </div>
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <p className={cn("font-medium truncate", isCurrentSong ? "text-primary" : "text-foreground")}>{song.title}</p>
+          <p className={cn("font-medium truncate", isCurrentSong && !dragHandleProps ? "text-primary" : "text-foreground")}>{song.title}</p>
           <p className="text-sm text-muted-foreground truncate">{song.artist}</p>
         </div>
       </div>

@@ -37,6 +37,7 @@ interface MusicContextType {
   addToQueue: (song: Song) => void;
   removeFromQueue: (songId: string) => void;
   clearQueue: () => void;
+  reorderQueue: (oldIndex: number, newIndex: number) => void;
   loadMusic: (directoryHandle: FileSystemDirectoryHandle) => Promise<void>;
   rescanMusic: () => Promise<void>;
   clearLibrary: () => void;
@@ -547,11 +548,20 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
       setQueue(prev => prev.filter(s => s.id !== songId));
       setOriginalQueue(prev => prev.filter(s => s.id !== songId));
   }
+  
+  const reorderQueue = (oldIndex: number, newIndex: number) => {
+    setQueue(currentQueue => {
+        const newQueue = [...currentQueue];
+        const [movedItem] = newQueue.splice(oldIndex, 1);
+        newQueue.splice(newIndex, 0, movedItem);
+        return newQueue;
+    });
+  }
 
   const clearQueue = () => {
       if (currentSong) {
-          setQueue([currentSong]);
-          setOriginalQueue([currentSong]);
+          const newQueue = queue.filter(s => s.id === currentSong.id);
+          setQueue(newQueue);
       } else {
           setQueue([]);
           setOriginalQueue([]);
@@ -659,6 +669,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         addToQueue,
         removeFromQueue,
         clearQueue,
+        reorderQueue,
         loadMusic: loadMusicFromHandle,
         rescanMusic,
         clearLibrary,

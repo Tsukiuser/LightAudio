@@ -8,7 +8,7 @@ import { Slider } from './ui/slider';
 import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, ListMusic, Shuffle, Repeat, Repeat1, Trash2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { formatDuration } from '@/lib/utils';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from './ui/dialog';
 import { ScrollArea } from './ui/scroll-area';
 import { SongItem } from './SongItem';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -18,6 +18,38 @@ import { AlbumPlaceholder } from './AlbumPlaceholder';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from './ui/tooltip';
 import NowPlayingSheet from './NowPlayingSheet';
 import Link from 'next/link';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+function SortableSongItem({ song }: { song: any }) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({ id: song.id });
+
+    const musicContext = useContext(MusicContext);
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+    };
+
+    return (
+        <div ref={setNodeRef} style={style} {...attributes}>
+            <SongItem
+                song={song}
+                onRemove={() => musicContext?.removeFromQueue?.(song.id)}
+                dragHandleProps={listeners}
+                isDragging={isDragging}
+            />
+        </div>
+    );
+}
 
 export default function AudioPlayer() {
   const musicContext = useContext(MusicContext);
@@ -108,12 +140,32 @@ export default function AudioPlayer() {
   const handleSkipBack = () => {
     musicContext?.playPreviousSong();
   }
+  
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+        const oldIndex = upNext.findIndex((s) => s.id === active.id);
+        const newIndex = upNext.findIndex((s) => s.id === over.id);
+        if (oldIndex !== -1 && newIndex !== -1) {
+          // We need to adjust indices because `upNext` doesn't include current song
+          musicContext?.reorderQueue(oldIndex + 1, newIndex + 1);
+        }
+    }
+  };
+
 
   if (!musicContext?.currentSong) {
     return null;
   }
   
-  const { currentSong, queue, isPlaying, isShuffled, repeatMode, toggleShuffle, toggleRepeat, removeFromQueue, clearQueue } = musicContext;
+  const { currentSong, queue, isPlaying, isShuffled, repeatMode, toggleShuffle, toggleRepeat, clearQueue } = musicContext;
   const currentSongIndexInQueue = queue.findIndex(s => s.id === currentSong.id);
   const upNext = currentSongIndexInQueue > -1 ? queue.slice(currentSongIndexInQueue + 1) : [];
 
@@ -248,26 +300,29 @@ export default function AudioPlayer() {
                           <ListMusic className="h-5 w-5" />
                       </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-md p-0">
+                  <DialogContent className="max-w-md p-0 flex flex-col h-[70vh]">
                       <DialogHeader className="p-4 border-b">
                           <DialogTitle>Up Next</DialogTitle>
                       </DialogHeader>
-                      <ScrollArea className="max-h-[60vh]">
-                          <div className="p-2">
-                          {upNext.length > 0 ? (
-                            <>
-                              {upNext.map((song) => <SongItem key={song.id} song={song} onRemove={() => removeFromQueue?.(song.id)} />)}
-                              <div className="p-2 mt-2">
-                                  <Button variant="outline" className="w-full" onClick={clearQueue}>
-                                      <Trash2 className="mr-2 h-4 w-4" /> Clear Queue
-                                  </Button>
-                              </div>
-                            </>
-                          ) : (
-                              <p className="p-4 text-center text-muted-foreground">The queue is empty.</p>
+                      <ScrollArea className="flex-1">
+                          <div className="p-1">
+                            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                                <SortableContext items={upNext.map(s => s.id)} strategy={verticalListSortingStrategy}>
+                                    {upNext.map((song) => <SortableSongItem key={song.id} song={song} />)}
+                                </SortableContext>
+                            </DndContext>
+                          {upNext.length === 0 && (
+                             <p className="p-4 text-center text-muted-foreground">The queue is empty.</p>
                           )}
                           </div>
                       </ScrollArea>
+                      {upNext.length > 0 && (
+                        <DialogFooter className="p-4 border-t">
+                            <Button variant="outline" className="w-full" onClick={clearQueue}>
+                                <Trash2 className="mr-2 h-4 w-4" /> Clear Queue
+                            </Button>
+                        </DialogFooter>
+                      )}
                   </DialogContent>
               </Dialog>
               <Button variant="ghost" size="icon" onClick={toggleMute}>

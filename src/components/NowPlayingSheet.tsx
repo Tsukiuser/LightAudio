@@ -14,6 +14,38 @@ import { ScrollArea } from './ui/scroll-area';
 import { SongItem } from './SongItem';
 import { MusicVisualizer } from './MusicVisualizer';
 import Link from 'next/link';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+function SortableSongItem({ song }: { song: any }) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({ id: song.id });
+
+    const musicContext = useContext(MusicContext);
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+    };
+
+    return (
+        <div ref={setNodeRef} style={style} {...attributes}>
+            <SongItem
+                song={song}
+                onRemove={() => musicContext?.removeFromQueue?.(song.id)}
+                dragHandleProps={listeners}
+                isDragging={isDragging}
+            />
+        </div>
+    );
+}
 
 interface NowPlayingSheetProps {
     open: boolean;
@@ -43,7 +75,8 @@ export default function NowPlayingSheet({ open, onOpenChange, progress, duration
         toggleRepeat,
         queue,
         removeFromQueue,
-        clearQueue
+        clearQueue,
+        reorderQueue
     } = musicContext;
 
     const currentSongIndexInQueue = queue.findIndex(s => s.id === currentSong.id);
@@ -56,6 +89,26 @@ export default function NowPlayingSheet({ open, onOpenChange, progress, duration
             play();
         }
     }
+    
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+        useSensor(KeyboardSensor, {
+        coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (over && active.id !== over.id) {
+            const oldIndex = upNext.findIndex((s) => s.id === active.id);
+            const newIndex = upNext.findIndex((s) => s.id === over.id);
+            if (oldIndex !== -1 && newIndex !== -1 && reorderQueue) {
+                // We need to adjust indices because `upNext` doesn't include current song
+                reorderQueue(oldIndex + 1, newIndex + 1);
+            }
+        }
+    };
+
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
@@ -134,21 +187,22 @@ export default function NowPlayingSheet({ open, onOpenChange, progress, duration
                             </Button>
                         </SheetTrigger>
                         <SheetContent side="bottom" className="h-4/5 bg-background p-0 flex flex-col">
-                             <SheetHeader className="p-4 border-b">
+                             <SheetHeader className="p-4 border-b flex flex-row justify-between items-center">
                                 <SheetTitle>Up Next</SheetTitle>
+                                {upNext.length > 0 && (
+                                    <Button variant="outline" size="sm" onClick={clearQueue}>
+                                        <Trash2 className="mr-2 h-4 w-4" /> Clear
+                                    </Button>
+                                )}
                             </SheetHeader>
                             <ScrollArea className="flex-1">
-                                <div className="p-2">
-                                    {upNext.length > 0 ? (
-                                        <>
-                                            {upNext.map((song) => <SongItem key={song.id} song={song} onRemove={() => removeFromQueue?.(song.id)}/>)}
-                                             <div className="p-2 mt-2">
-                                                <Button variant="outline" className="w-full" onClick={clearQueue}>
-                                                    <Trash2 className="mr-2 h-4 w-4" /> Clear Queue
-                                                </Button>
-                                            </div>
-                                        </>
-                                    ) : (
+                                <div className="p-1">
+                                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                                        <SortableContext items={upNext.map(s => s.id)} strategy={verticalListSortingStrategy}>
+                                            {upNext.map((song) => <SortableSongItem key={song.id} song={song} />)}
+                                        </SortableContext>
+                                    </DndContext>
+                                    {upNext.length === 0 && (
                                         <p className="p-4 text-center text-sm text-muted-foreground">End of queue.</p>
                                     )}
                                 </div>
