@@ -2,7 +2,7 @@
 'use client';
 
 import { createContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
-import type { Song, Playlist } from '@/lib/types';
+import type { Song, Playlist, AppData } from '@/lib/types';
 // @ts-ignore
 import * as music from 'music-metadata-browser';
 import { useToast } from '@/hooks/use-toast';
@@ -26,6 +26,8 @@ interface MusicContextType {
   loadMusic: (directoryHandle: FileSystemDirectoryHandle) => Promise<void>;
   rescanMusic: () => Promise<void>;
   clearLibrary: () => void;
+  exportData: () => void;
+  importData: (file: File) => void;
   hasAccess: boolean;
   isLoading: boolean;
   isPlaying: boolean;
@@ -422,6 +424,52 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     })
   }
 
+  const exportData = () => {
+    const data: AppData = {
+        playlists: playlists,
+    };
+    const jsonString = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `lightaudio_backup_${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const importData = (file: File) => {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+          try {
+              const jsonString = event.target?.result as string;
+              const data: AppData = JSON.parse(jsonString);
+
+              if (data.playlists && Array.isArray(data.playlists)) {
+                  setPlaylists(data.playlists);
+                  await set('playlists', data.playlists);
+                  toast({
+                      title: 'Import Successful',
+                      description: `Restored ${data.playlists.length} playlists.`,
+                  });
+              } else {
+                throw new Error('Invalid file format.');
+              }
+          } catch (error) {
+              console.error('Error importing data:', error);
+              toast({
+                  title: 'Import Failed',
+                  description: 'The selected file is not a valid backup file.',
+                  variant: 'destructive',
+              });
+          }
+      };
+      reader.readAsText(file);
+  };
+
+
   return (
     <MusicContext.Provider value={{ 
         songs, 
@@ -439,6 +487,8 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         loadMusic: loadMusicFromHandle,
         rescanMusic,
         clearLibrary,
+        exportData,
+        importData,
         hasAccess,
         isLoading,
         isPlaying,

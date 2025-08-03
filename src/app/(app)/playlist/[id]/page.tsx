@@ -1,7 +1,7 @@
 
 'use client'
 
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useState, useMemo } from 'react';
 import { notFound } from 'next/navigation';
 import { MusicContext } from '@/context/MusicContext';
 import type { Playlist, Song } from '@/lib/types';
@@ -9,26 +9,31 @@ import { PageHeader } from '@/components/PageHeader';
 import { SongItem } from '@/components/SongItem';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Play, ListMusic } from 'lucide-react';
+import { Play, ListMusic, AlertTriangle } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 export default function PlaylistDetailPage({ params }: { params: { id: string } }) {
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
-  const [songs, setSongs] = useState<Song[]>([]);
   const musicContext = useContext(MusicContext);
   
   useEffect(() => {
-    if (musicContext?.playlists && musicContext?.songs) {
+    if (musicContext?.playlists) {
       const foundPlaylist = musicContext.playlists.find(p => p.id === params.id);
       if (foundPlaylist) {
         setPlaylist(foundPlaylist);
-        const playlistSongs = musicContext.getPlaylistSongs(params.id);
-        setSongs(playlistSongs);
       } else {
         notFound();
       }
     }
-  }, [musicContext?.playlists, musicContext?.songs, params.id, musicContext]);
+  }, [musicContext?.playlists, params.id]);
+
+  const { songs, missingSongsCount } = useMemo(() => {
+    if (!playlist || !musicContext) return { songs: [], missingSongsCount: 0 };
+    const playlistSongs = musicContext.getPlaylistSongs(playlist.id);
+    const missingCount = playlist.songIds.length - playlistSongs.length;
+    return { songs: playlistSongs, missingSongsCount: missingCount };
+  }, [playlist, musicContext]);
+
 
   const handlePlayPlaylist = () => {
     if (songs.length > 0) {
@@ -87,6 +92,12 @@ export default function PlaylistDetailPage({ params }: { params: { id: string } 
                 </div>
             )}
           </div>
+           {missingSongsCount > 0 && (
+                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground p-4 mt-4 bg-muted rounded-md">
+                    <AlertTriangle className="h-4 w-4" />
+                    <p>{missingSongsCount} {missingSongsCount > 1 ? 'titles are' : 'title is'} unavailable.</p>
+                </div>
+            )}
         </div>
       </div>
     </ScrollArea>

@@ -1,17 +1,19 @@
 
 'use client'
 
-import { useContext, useState, useEffect } from 'react';
+import { useContext, useState, useEffect, useRef } from 'react';
 import { PageHeader } from '@/components/PageHeader';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { FolderSync, RefreshCw, Paintbrush, Undo, Trash2, Palette, Smartphone } from 'lucide-react';
+import { FolderSync, RefreshCw, Paintbrush, Undo, Trash2, Palette, Smartphone, Download, Upload } from 'lucide-react';
 import { MusicContext } from '@/context/MusicContext';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -30,6 +32,7 @@ export default function SettingsPage() {
     const [accentColor, setAccentColor] = useState('#9f8fbf');
     const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
     const [isPwaInstalled, setIsPwaInstalled] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     
     useEffect(() => {
         const savedBg = localStorage.getItem('theme-background-color');
@@ -128,6 +131,26 @@ export default function SettingsPage() {
         });
     }
 
+    const handleExport = () => {
+        musicContext?.exportData();
+        toast({
+            title: 'Data Exported',
+            description: 'Your playlists and settings have been saved to a file.',
+        });
+    };
+
+    const handleImportClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            musicContext?.importData(file);
+        }
+    };
+
+
   return (
     <ScrollArea className="h-full">
       <div className="container mx-auto max-w-3xl pb-28">
@@ -222,11 +245,54 @@ export default function SettingsPage() {
                 <RefreshCw className="mr-2 h-4 w-4" />
                 Rescan Folder
               </Button>
-              <Button variant="destructive" onClick={handleClearLibrary} disabled={!musicContext?.hasAccess}>
-                <Trash2 className="mr-2 h-4 w-4" />
-                Clear Library
-              </Button>
+              <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                         <Button variant="destructive" disabled={!musicContext?.hasAccess}>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Clear Library
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete your
+                            library and playlist data. You will need to grant folder access again.
+                        </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleClearLibrary}>Continue</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </CardContent>
+          </Card>
+
+          <Card>
+              <CardHeader>
+                  <CardTitle>Data Management</CardTitle>
+                  <CardDescription>
+                      Backup or restore your playlists and application settings.
+                  </CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-wrap gap-2">
+                  <Button variant="outline" onClick={handleExport}>
+                      <Download className="mr-2 h-4 w-4" />
+                      Export Data
+                  </Button>
+                  <Button variant="outline" onClick={handleImportClick}>
+                      <Upload className="mr-2 h-4 w-4" />
+                      Import Data
+                  </Button>
+                   <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileSelected}
+                        accept=".txt,.json"
+                        className="hidden"
+                    />
+              </CardContent>
           </Card>
 
           <Card>
@@ -234,7 +300,7 @@ export default function SettingsPage() {
               <CardTitle>Credits</CardTitle>
             </CardHeader>
             <CardContent>
-                <p className="text-sm text-muted-foreground">Version 1.9.6</p>
+                <p className="text-sm text-muted-foreground">Version 1.9.7</p>
                 <p className="text-sm text-muted-foreground mt-1">Made by Victor Martinez on Firebase Studio</p>
             </CardContent>
           </Card>

@@ -1,3 +1,4 @@
+
 export type Song = {
   id: string;
   title: string;
@@ -27,4 +28,9 @@ export type Playlist = {
     name: string;
     songIds: string[];
     createdAt: string;
+}
+
+export type AppData = {
+    playlists: Playlist[];
+    // We can add other settings here in the future
 }
