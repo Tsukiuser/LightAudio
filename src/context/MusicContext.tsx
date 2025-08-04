@@ -190,7 +190,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const loadMusicFromHandle = useCallback(async (dirHandle: FileSystemDirectoryHandle, isInitialLoad = false) => {
-    if (!isInitialLoad) {
+    if (!isInitialLoad && !isMobile) { // Don't show loading screen for initial load on desktop or any load on mobile
       setIsLoading(true);
     }
     
@@ -312,7 +312,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     
     if (isLoading) setIsLoading(false);
 
-  }, [toast, hasAccess, isLoading, songs]);
+  }, [toast, hasAccess, isLoading, songs, isMobile]);
 
   // Effect to save state whenever it changes
     useEffect(() => {
@@ -380,35 +380,24 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
                 storedHandle = handle;
                 setHasAccess(true);
 
-                // Load playback state first to restore UI instantly
-                const savedState = loadPlaybackState();
-                if(savedState && savedState.currentSongId) {
-                  // This is a bit of a hack: create a dummy song list
-                  // to allow UI to render something while we scan in background.
-                  // The real data will come from the background scan.
-                  const dummySongs = [
-                    ...((savedState.queueIds || []).map(id => ({ id, title: 'Loading...', artist: '', album: '', duration: '', coverArt: null, url: ''}))),
-                    ...((savedState.originalQueueIds || []).map(id => ({ id, title: 'Loading...', artist: '', album: '', duration: '', coverArt: null, url: ''})))
-                  ];
-                  setSongs(dummySongs as Song[]);
-
-                  const restoredQueue = (savedState.queueIds || [])
-                    .map(id => dummySongs.find(s => s.id === id))
-                    .filter((s): s is Song => !!s);
-                  setQueue(restoredQueue);
-                }
-
+                // On non-mobile, we can scan in the background.
                 if (!isMobile) {
-                    setIsLoading(false); // Don't show loading screen on desktop
                     await loadMusicFromHandle(handle, true);
                 } else {
-                    setIsLoading(false); // On mobile, just load and wait for user action
+                    // On mobile, don't scan. Just load what we have.
+                    const savedState = loadPlaybackState();
+                    if(savedState) {
+                       if (savedState.isShuffled) setIsShuffled(savedState.isShuffled);
+                       if (savedState.repeatMode) setRepeatMode(savedState.repeatMode);
+                       if (savedState.volume !== undefined && audioRef.current) audioRef.current.volume = savedState.volume;
+                       // We can't actually load songs, as we don't have permission.
+                       // We'll leave the song list empty until user grants access again.
+                    }
                 }
-            } else {
-                setIsLoading(false);
             }
         } catch (e) {
             console.error("Could not retrieve data from IndexedDB", e);
+        } finally {
             setIsLoading(false);
         }
     };
