@@ -3,6 +3,7 @@
 
 import { useContext, useEffect, useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { MusicContext } from '@/context/MusicContext';
 import { getAlbums } from '@/lib/music-utils';
 import type { Album } from '@/lib/types';
@@ -11,10 +12,10 @@ import { SongItem } from '@/components/SongItem';
 import { notFound } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Play, MoreHorizontal, ListPlus, Music2 } from 'lucide-react';
+import { Play, MoreHorizontal, ListPlus, Music2, User } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AlbumPlaceholder } from '@/components/AlbumPlaceholder';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 
 export default function AlbumDetailPage({ params }: { params: { artist: string; album: string } }) {
@@ -101,7 +102,7 @@ export default function AlbumDetailPage({ params }: { params: { artist: string; 
                 <div className="flex flex-col items-center md:items-start text-center md:text-left pt-4">
                     <p className="text-sm font-medium text-muted-foreground uppercase">Album</p>
                     <h1 className="text-3xl md:text-5xl font-bold mt-1 text-foreground break-words">{album.name}</h1>
-                    <h2 className="text-xl md:text-2xl text-muted-foreground mt-2">{album.artist}</h2>
+                    <Link href={`/artist/${encodeURIComponent(album.artist)}`} className="text-xl md:text-2xl text-muted-foreground mt-2 hover:underline">{album.artist}</Link>
                     <p className="text-sm text-muted-foreground mt-2">{album.songs.length} songs</p>
                     <div className="flex items-center gap-2 mt-4">
                         <Button onClick={handlePlayAlbum}>
@@ -135,6 +136,13 @@ export default function AlbumDetailPage({ params }: { params: { artist: string; 
                                     )}
                                     </DropdownMenuSubContent>
                                 </DropdownMenuSub>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem asChild>
+                                    <Link href={`/artist/${encodeURIComponent(album.artist)}`}>
+                                        <User className="mr-2 h-4 w-4" />
+                                        Go to Artist
+                                    </Link>
+                                </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>

@@ -129,25 +129,25 @@ export default function LibraryPage() {
           <TabsContent value="artists" className="mt-6">
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
               {allArtists.map((artist) => (
-                <div key={artist.name} className="group relative cursor-pointer text-center">
-                  <div className="aspect-square w-full rounded-full overflow-hidden transition-transform group-hover:scale-105">
-                    {artist.coverArt ? (
-                      <Image
-                        src={artist.coverArt}
-                        alt={`Photo of ${artist.name}`}
-                        width={300}
-                        height={300}
-                        className="h-full w-full object-cover"
-                        data-ai-hint="artist portrait"
-                      />
-                    ) : (
-                      <AlbumPlaceholder />
-                    )}
-                  </div>
-                    <div className="mt-2">
-                      <h3 className="font-semibold text-foreground truncate">{artist.name}</h3>
+                <Link key={artist.name} href={`/artist/${encodeURIComponent(artist.name)}`} className="group relative text-center">
+                    <div className="aspect-square w-full rounded-full overflow-hidden transition-transform group-hover:scale-105">
+                      {artist.coverArt ? (
+                        <Image
+                          src={artist.coverArt}
+                          alt={`Photo of ${artist.name}`}
+                          width={300}
+                          height={300}
+                          className="h-full w-full object-cover"
+                          data-ai-hint="artist portrait"
+                        />
+                      ) : (
+                        <AlbumPlaceholder />
+                      )}
                     </div>
-                </div>
+                      <div className="mt-2">
+                        <h3 className="font-semibold text-foreground truncate">{artist.name}</h3>
+                      </div>
+                </Link>
               ))}
             </div>
           </TabsContent>

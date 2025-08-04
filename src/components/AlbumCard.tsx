@@ -4,9 +4,9 @@ import Link from 'next/link';
 import type { Album } from '@/lib/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlbumPlaceholder } from './AlbumPlaceholder';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Button } from './ui/button';
-import { ListPlus, MoreVertical, Music2 } from 'lucide-react';
+import { ListPlus, MoreVertical, Music2, User } from 'lucide-react';
 import { useContext } from 'react';
 import { MusicContext } from '@/context/MusicContext';
 import { useToast } from '@/hooks/use-toast';
@@ -85,6 +85,13 @@ export function AlbumCard({ album }: AlbumCardProps) {
                     )}
                     </DropdownMenuSubContent>
                 </DropdownMenuSub>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                    <Link href={`/artist/${encodeURIComponent(album.artist)}`}>
+                        <User className="mr-2 h-4 w-4" />
+                        Go to Artist
+                    </Link>
+                </DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>
       </div>

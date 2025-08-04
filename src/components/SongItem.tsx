@@ -4,7 +4,7 @@
 import { useContext } from 'react';
 import Image from 'next/image';
 import type { Song } from '@/lib/types';
-import { MoreHorizontal, ListPlus, Music2, Album as AlbumIcon, X, Info, GripVertical } from 'lucide-react';
+import { MoreHorizontal, ListPlus, Music2, Album as AlbumIcon, X, Info, GripVertical, User } from 'lucide-react';
 import { Button } from './ui/button';
 import { MusicContext } from '@/context/MusicContext';
 import { cn } from '@/lib/utils';
@@ -135,6 +135,12 @@ export function SongItem({ song, queue, onRemove, dragHandleProps, isDragging }:
                     <Link href={`/album/${encodeURIComponent(song.artist)}/${encodeURIComponent(song.album)}`}>
                         <AlbumIcon className="mr-2 h-4 w-4" />
                         Go to Album
+                    </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                    <Link href={`/artist/${encodeURIComponent(song.artist)}`}>
+                        <User className="mr-2 h-4 w-4" />
+                        Go to Artist
                     </Link>
                 </DropdownMenuItem>
                 </DropdownMenuContent>
