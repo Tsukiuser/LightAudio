@@ -312,7 +312,7 @@ export default function SettingsPage() {
               <CardTitle>Credits</CardTitle>
             </CardHeader>
             <CardContent>
-                <p className="text-sm text-muted-foreground">Version 2.2.0</p>
+                <p className="text-sm text-muted-foreground">Version 2.3.0</p>
                 <p className="text-sm text-muted-foreground mt-1">Made by Victor Martinez on Firebase Studio</p>
             </CardContent>
           </Card>
