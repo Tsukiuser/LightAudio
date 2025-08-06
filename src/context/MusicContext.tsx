@@ -3,7 +3,6 @@
 
 import { createContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import type { Song, Playlist, AppData } from '@/lib/types';
-// @ts-ignore
 import * as music from 'music-metadata-browser';
 import { useToast } from '@/hooks/use-toast';
 import { get, set, del } from '@/lib/idb';
@@ -61,12 +60,13 @@ export const MusicContext = createContext<MusicContextType | null>(null);
 
 let storedHandle: FileSystemDirectoryHandle | null = null; 
 
-async function verifyPermission(directoryHandle: FileSystemDirectoryHandle) {
-    const options = { mode: 'read' };
-    if ((await directoryHandle.queryPermission(options)) === 'granted') {
+async function verifyPermission(directoryHandle: FileSystemDirectoryHandle, request = false) {
+    const options = { mode: 'read' as const };
+    const state = await directoryHandle.queryPermission(options);
+    if (state === 'granted') {
         return true;
     }
-    if ((await directoryHandle.requestPermission(options)) === 'granted') {
+    if (request && (await directoryHandle.requestPermission(options)) === 'granted') {
         return true;
     }
     return false;
@@ -189,41 +189,50 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  const loadMusicFromHandle = useCallback(async (dirHandle: FileSystemDirectoryHandle, isInitialLoad = false) => {
-    if (!isInitialLoad && !isMobile) { // Don't show loading screen for initial load on desktop or any load on mobile
-      setIsLoading(true);
+  const loadMusicFromHandle = useCallback(async (dirHandle: FileSystemDirectoryHandle, isTriggeredByUser = false) => {
+    if (isTriggeredByUser) {
+        setIsLoading(true);
     }
     
-    const permissionGranted = await verifyPermission(dirHandle);
+    const permissionGranted = await verifyPermission(dirHandle, isTriggeredByUser);
     if (!permissionGranted) {
-        console.error("Permission denied to read directory.");
+        if (isTriggeredByUser) {
+            toast({
+                title: 'Permission Denied',
+                description: 'Could not access the music folder.',
+                variant: 'destructive'
+            });
+        }
         await del('directoryHandle');
         storedHandle = null;
         setHasAccess(false);
         setIsLoading(false);
-         toast({
-            title: 'Permission Denied',
-            description: 'Could not access the music folder.',
-            variant: 'destructive'
-        })
         return;
     }
-
-    if (!hasAccess) setHasAccess(true);
-    if (!storedHandle) {
-        storedHandle = dirHandle;
+    
+    if (!isTriggeredByUser && !isMobile) { // Start background scan on desktop
+        // Don't set loading state for background scan
+    } else if (isTriggeredByUser) {
         await set('directoryHandle', dirHandle);
+        storedHandle = dirHandle;
     }
+    
+    setHasAccess(true);
+
 
     const newSongs: Song[] = [];
     
     async function* getFilesRecursively(entry: FileSystemDirectoryHandle): AsyncGenerator<FileSystemFileHandle> {
-        for await (const child of entry.values()) {
-            if (child.kind === 'file' && (child.name.endsWith('.mp3') || child.name.endsWith('.flac') || child.name.endsWith('.m4a'))) {
-                yield child;
-            } else if (child.kind === 'directory') {
-                yield* getFilesRecursively(child);
+        try {
+            for await (const child of entry.values()) {
+                if (child.kind === 'file' && (child.name.endsWith('.mp3') || child.name.endsWith('.flac') || child.name.endsWith('.m4a'))) {
+                    yield child;
+                } else if (child.kind === 'directory') {
+                    yield* getFilesRecursively(child);
+                }
             }
+        } catch(e) {
+            console.warn(`Could not read directory ${entry.name}`, e);
         }
     }
 
@@ -263,46 +272,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     if (hasChanged) {
         setSongs(newSongs);
 
-        // After songs are loaded, restore playback state if it's the first time
-        if (isInitialLoad) {
-            const savedState = loadPlaybackState();
-            if (savedState) {
-                if (savedState.isShuffled) setIsShuffled(savedState.isShuffled);
-                if (savedState.repeatMode) setRepeatMode(savedState.repeatMode);
-                if (savedState.volume !== undefined && audioRef.current) audioRef.current.volume = savedState.volume;
-
-                const restoredQueue = (savedState.queueIds || [])
-                    .map(id => newSongs.find(s => s.id === id))
-                    .filter((s): s is Song => !!s);
-                setQueue(restoredQueue);
-
-                const restoredOriginalQueue = (savedState.originalQueueIds || [])
-                    .map(id => newSongs.find(s => s.id === id))
-                    .filter((s): s is Song => !!s);
-                setOriginalQueue(restoredOriginalQueue);
-
-                if (savedState.currentSongId) {
-                    const restoredSong = newSongs.find(s => s.id === savedState.currentSongId);
-                    if (restoredSong) {
-                        setCurrentSong(restoredSong);
-                        if (audioRef.current) {
-                            audioRef.current.src = restoredSong.url;
-                            audioRef.current.load();
-                            if (savedState.progress) {
-                                const onLoadedData = () => {
-                                    if(audioRef.current) {
-                                        audioRef.current.currentTime = savedState.progress ?? 0;
-                                        audioRef.current.removeEventListener('loadeddata', onLoadedData);
-                                    }
-                                }
-                                audioRef.current.addEventListener('loadeddata', onLoadedData);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        if (newSongs.length > 0 && !isInitialLoad) {
+        if (newSongs.length > 0 && isTriggeredByUser) {
           toast({
               title: 'Library Updated',
               description: `Found ${newSongs.length} songs.`,
@@ -312,7 +282,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     
     if (isLoading) setIsLoading(false);
 
-  }, [toast, hasAccess, isLoading, songs, isMobile]);
+  }, [toast, songs, isLoading, isMobile]);
 
   // Effect to save state whenever it changes
     useEffect(() => {
@@ -342,7 +312,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
 
   const rescanMusic = useCallback(async () => {
     if (storedHandle) {
-        await loadMusicFromHandle(storedHandle, false);
+        await loadMusicFromHandle(storedHandle, true);
     } else {
         toast({
             title: 'No Folder Selected',
@@ -378,22 +348,9 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
             }
             if (handle) {
                 storedHandle = handle;
-                setHasAccess(true);
-
-                // On non-mobile, we can scan in the background.
-                if (!isMobile) {
-                    await loadMusicFromHandle(handle, true);
-                } else {
-                    // On mobile, don't scan. Just load what we have.
-                    const savedState = loadPlaybackState();
-                    if(savedState) {
-                       if (savedState.isShuffled) setIsShuffled(savedState.isShuffled);
-                       if (savedState.repeatMode) setRepeatMode(savedState.repeatMode);
-                       if (savedState.volume !== undefined && audioRef.current) audioRef.current.volume = savedState.volume;
-                       // We can't actually load songs, as we don't have permission.
-                       // We'll leave the song list empty until user grants access again.
-                    }
-                }
+                // On non-mobile, we can scan in the background. On mobile, we can't.
+                // The `loadMusicFromHandle` function handles the logic internally now.
+                await loadMusicFromHandle(handle, false);
             }
         } catch (e) {
             console.error("Could not retrieve data from IndexedDB", e);
@@ -405,6 +362,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         checkAccess();
     }
   }, [loadMusicFromHandle, isMobile]);
+
 
   const createPlaylist = async (name: string) => {
     const newPlaylist: Playlist = {
@@ -700,7 +658,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         removeFromQueue,
         clearQueue,
         reorderQueue,
-        loadMusic: loadMusicFromHandle,
+        loadMusic: (handle) => loadMusicFromHandle(handle, true),
         rescanMusic,
         clearLibrary,
         exportData,
