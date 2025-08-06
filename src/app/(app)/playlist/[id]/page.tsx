@@ -42,6 +42,7 @@ function SortablePlaylistItem({ song, onRemove }: { song: Song, onRemove: (songI
     const style = {
         transform: CSS.Transform.toString(transform),
         transition,
+        zIndex: isDragging ? 10 : 'auto',
     };
 
     return (

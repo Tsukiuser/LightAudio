@@ -65,10 +65,6 @@ let storedHandle: FileSystemDirectoryHandle | null = null;
 
 async function verifyPermission(directoryHandle: FileSystemDirectoryHandle, request = false) {
     const options = { mode: 'read' as const };
-    const state = await directoryHandle.queryPermission(options);
-    if (state === 'granted') {
-        return true;
-    }
     if (request) {
         try {
             if ((await directoryHandle.requestPermission(options)) === 'granted') {
@@ -79,7 +75,8 @@ async function verifyPermission(directoryHandle: FileSystemDirectoryHandle, requ
             return false;
         }
     }
-    return false;
+    const state = await directoryHandle.queryPermission(options);
+    return state === 'granted';
 }
 
 const shuffleArray = <T,>(array: T[]): T[] => {
@@ -476,16 +473,22 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
   }
 
   const reorderPlaylist = async (playlistId: string, from: number, to: number) => {
-    const updatedPlaylists = playlists.map(p => {
-        if (p.id === playlistId) {
-            const reorderedSongIds = arrayMove(p.songIds, from, to);
-            return { ...p, songIds: reorderedSongIds };
-        }
-        return p;
+    setPlaylists(currentPlaylists => {
+      const playlistIndex = currentPlaylists.findIndex(p => p.id === playlistId);
+      if (playlistIndex === -1) return currentPlaylists;
+      
+      const playlistToReorder = currentPlaylists[playlistIndex];
+      const reorderedSongIds = arrayMove(playlistToReorder.songIds, from, to);
+      
+      const updatedPlaylist = { ...playlistToReorder, songIds: reorderedSongIds };
+      
+      const newPlaylists = [...currentPlaylists];
+      newPlaylists[playlistIndex] = updatedPlaylist;
+      
+      set('playlists', newPlaylists);
+      return newPlaylists;
     });
-    setPlaylists(updatedPlaylists);
-    await set('playlists', updatedPlaylists);
-  }
+  };
 
   const getPlaylistSongs = (playlistId: string): Song[] => {
     const playlist = playlists.find(p => p.id === playlistId);

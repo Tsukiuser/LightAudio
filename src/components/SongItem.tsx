@@ -30,8 +30,13 @@ export function SongItem({ song, queue, onRemove, dragHandleProps, isDragging }:
   const { toast } = useToast();
 
   const handlePlay = () => {
-    // Don't play if we're trying to remove it or drag it
-    if (onRemove || dragHandleProps) return;
+    // If there's a drag handle, play only happens on the main area, not the handle.
+    // If there is no drag handle, the whole item is clickable.
+    if (dragHandleProps) {
+      if ((event?.target as HTMLElement).closest('[data-drag-handle]')) {
+        return;
+      }
+    }
     musicContext?.playSong(song, queue);
   };
 
@@ -52,17 +57,19 @@ export function SongItem({ song, queue, onRemove, dragHandleProps, isDragging }:
       className={cn(
         "flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 transition-colors w-full group",
         isCurrentSong && !dragHandleProps && "bg-primary/10 hover:bg-primary/20",
-        isDragging && "opacity-50 bg-primary/20"
+        isDragging && "opacity-50 bg-primary/20",
+        !dragHandleProps && "cursor-pointer"
       )}
+      onClick={!dragHandleProps ? handlePlay : undefined}
     >
       {dragHandleProps && (
-        <div {...dragHandleProps} className="p-2 cursor-grab touch-none">
+        <div {...dragHandleProps} className="p-2 cursor-grab touch-none" data-drag-handle>
             <GripVertical className="h-5 w-5 text-muted-foreground"/>
         </div>
       )}
       <div 
-        className="flex items-center gap-4 flex-1 min-w-0"
-        onClick={handlePlay}
+        className={cn("flex items-center gap-4 flex-1 min-w-0", dragHandleProps && "cursor-pointer")}
+        onClick={dragHandleProps ? handlePlay : undefined}
       >
         <div className="relative h-10 w-10 flex-shrink-0">
           {song.coverArt ? (
@@ -77,7 +84,7 @@ export function SongItem({ song, queue, onRemove, dragHandleProps, isDragging }:
           ) : (
              <AlbumPlaceholder className="rounded-md h-10 w-10"/>
           )}
-          {isCurrentSong && !onRemove && !dragHandleProps && (
+          {isCurrentSong && !dragHandleProps && (
               <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-md">
                   <StaticLogo className="h-5 w-5 text-white" />
               </div>
