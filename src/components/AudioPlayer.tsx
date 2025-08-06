@@ -65,18 +65,6 @@ export default function AudioPlayer() {
 
   useEffect(() => {
     const audio = audioRef?.current;
-    if (audio && musicContext?.currentSong) {
-        if (audio.src !== musicContext.currentSong.url) {
-            audio.src = musicContext.currentSong.url;
-            audio.load();
-        }
-        musicContext.play();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [musicContext?.currentSong]);
-
-  useEffect(() => {
-    const audio = audioRef?.current;
     if (!audio) return;
     
     const setAudioData = () => {

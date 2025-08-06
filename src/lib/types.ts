@@ -1,12 +1,12 @@
 
 export type Song = {
-  id: string;
+  id: string; // combination of filename and size
+  path: string[]; // relative path from the root directory handle
   title: string;
   artist: string;
   album: string;
   duration: string;
   coverArt: string | null;
-  url: string;
 };
 
 export type Album = {

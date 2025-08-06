@@ -7,13 +7,14 @@ import { formatDuration } from '@/lib/utils';
 
 declare const self: DedicatedWorkerGlobalScope;
 
-async function* getFilesRecursively(entry: FileSystemDirectoryHandle): AsyncGenerator<FileSystemFileHandle> {
+async function* getFileHandlesRecursively(entry: FileSystemDirectoryHandle, path: string[] = []): AsyncGenerator<{handle: FileSystemFileHandle, path: string[]}> {
     try {
         for await (const child of entry.values()) {
+            const newPath = [...path, child.name];
             if (child.kind === 'file' && (child.name.endsWith('.mp3') || child.name.endsWith('.flac') || child.name.endsWith('.m4a') || child.name.endsWith('.wav') || child.name.endsWith('.ogg'))) {
-                yield child;
+                yield { handle: child, path: newPath };
             } else if (child.kind === 'directory') {
-                yield* getFilesRecursively(child);
+                yield* getFileHandlesRecursively(child, newPath);
             }
         }
     } catch(e) {
@@ -29,11 +30,13 @@ self.onmessage = async (event: MessageEvent<{ type: string; payload: any }>) => 
         const { directoryHandle, existingSongIds } = payload;
         const newSongs: Song[] = [];
         const existingIdSet = new Set(existingSongIds);
+        const foundSongIds = new Set<string>();
 
         try {
-            for await (const fileHandle of getFilesRecursively(directoryHandle)) {
+            for await (const { handle: fileHandle, path } of getFileHandlesRecursively(directoryHandle)) {
                 const file = await fileHandle.getFile();
                 const songId = file.name + '-' + file.size;
+                foundSongIds.add(songId);
 
                 if (existingIdSet.has(songId)) {
                     continue; // Skip already processed files
@@ -48,20 +51,22 @@ self.onmessage = async (event: MessageEvent<{ type: string; payload: any }>) => 
 
                     newSongs.push({
                         id: songId,
+                        path: path,
                         title: metadata.common.title || file.name,
                         artist: metadata.common.artist || 'Unknown Artist',
                         album: metadata.common.album || 'Unknown Album',
                         duration: formatDuration(metadata.format.duration || 0),
                         coverArt: coverArt,
-                        url: URL.createObjectURL(file),
                     });
 
                 } catch(e) {
                     console.warn(`Could not read metadata for ${fileHandle.name}`, e);
                 }
             }
+
+            const removedSongIds = existingSongIds.filter((id: string) => !foundSongIds.has(id));
             
-            self.postMessage({ type: 'SCAN_COMPLETE', payload: { newSongs } });
+            self.postMessage({ type: 'SCAN_COMPLETE', payload: { newSongs, removedSongIds } });
 
         } catch (e) {
             console.error("Error scanning music files in worker", e);

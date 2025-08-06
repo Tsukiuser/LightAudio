@@ -66,17 +66,32 @@ let storedHandle: FileSystemDirectoryHandle | null = null;
 async function verifyPermission(directoryHandle: FileSystemDirectoryHandle, request = false) {
     const options = { mode: 'read' as const };
     if (request) {
+        // This should only be called following a user gesture.
         try {
-            if ((await directoryHandle.requestPermission(options)) === 'granted') {
-                return true;
-            }
+            return (await directoryHandle.requestPermission(options)) === 'granted';
         } catch (error) {
-            console.error("Permission request failed. This usually means it was not triggered by a user gesture.", error);
+            console.error("Permission request failed, likely not triggered by a user gesture.", error);
             return false;
         }
     }
     const state = await directoryHandle.queryPermission(options);
     return state === 'granted';
+}
+
+async function getFileHandleFromPath(dirHandle: FileSystemDirectoryHandle, path: string[]): Promise<FileSystemFileHandle | null> {
+    let current: FileSystemDirectoryHandle | FileSystemFileHandle = dirHandle;
+    for (const part of path) {
+        if (current.kind === 'directory') {
+            // @ts-ignore
+            current = await current.get(part);
+        } else {
+            return null; // Path is incorrect
+        }
+    }
+    if (current.kind === 'file') {
+        return current;
+    }
+    return null;
 }
 
 const shuffleArray = <T,>(array: T[]): T[] => {
@@ -123,6 +138,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
   const [songs, setSongs] = useState<Song[]>([]);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
+  const [currentlyPlayingUrl, setCurrentlyPlayingUrl] = useState<string | null>(null);
   const [queue, setQueue] = useState<Song[]>([]);
   const [originalQueue, setOriginalQueue] = useState<Song[]>([]);
   const [hasAccess, setHasAccess] = useState(false);
@@ -164,10 +180,10 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         }
     });
 
-    if (isFullRescan) {
+    if (isFullRescan && !isMobile) {
         setIsLoading(false);
     }
-  }, [isScanning]);
+  }, [isScanning, isMobile]);
 
   // Initialize Web Worker
   useEffect(() => {
@@ -176,20 +192,40 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     workerRef.current.onmessage = (event: MessageEvent<{ type: string; payload: any }>) => {
         const { type, payload } = event.data;
         if (type === 'SCAN_COMPLETE') {
-            const { newSongs } = payload;
+            const { newSongs, removedSongIds } = payload;
+
+            let updated = false;
+
             if (newSongs.length > 0) {
                 setSongs(prevSongs => {
                     const existingIds = new Set(prevSongs.map(s => s.id));
                     const trulyNew = newSongs.filter((s: Song) => !existingIds.has(s.id));
+                    if (trulyNew.length === 0) return prevSongs;
+                    updated = true;
                     const updatedSongs = [...prevSongs, ...trulyNew];
-                    set('songs', updatedSongs); // Persist to IndexedDB
+                    set('songs', updatedSongs);
                     return updatedSongs;
                 });
-                toast({
+                 toast({
                     title: 'Library Updated',
                     description: `Found ${newSongs.length} new song(s).`,
                 });
             }
+
+            if(removedSongIds.length > 0) {
+                updated = true;
+                setSongs(prevSongs => {
+                    const updatedSongs = prevSongs.filter(s => !removedSongIds.includes(s.id));
+                    set('songs', updatedSongs);
+                    return updatedSongs;
+                });
+                 toast({
+                    title: 'Library Cleaned',
+                    description: `Removed ${removedSongIds.length} unavailable song(s).`,
+                });
+            }
+
+
             setIsScanning(false);
         } else if (type === 'SCAN_ERROR') {
             console.error('Scan worker error:', payload.error);
@@ -264,6 +300,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
   // Initial load effect
   useEffect(() => {
     const checkAccessAndLoad = async () => {
+        setIsLoading(true);
         try {
             const [handle, storedPlaylists, storedSongs, playbackState] = await Promise.all([
                 get<FileSystemDirectoryHandle>('directoryHandle'),
@@ -280,13 +317,14 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
                 if (await verifyPermission(handle, false)) {
                     setHasAccess(true);
                     if (!isMobile) {
+                        // Don't wait for this, let it run in the background
                         loadMusicFromHandle(handle, false);
                     }
                 } else {
                      setHasAccess(false);
                 }
             }
-             if (playbackState && storedSongs) {
+             if (playbackState && storedSongs && storedSongs.length > 0) {
                 const { currentSongId, queueIds, originalQueueIds, isShuffled, repeatMode, progress, volume } = playbackState;
 
                 const restoredQueue = queueIds?.map(id => storedSongs.find(s => s.id === id)).filter(Boolean) as Song[] || [];
@@ -300,9 +338,17 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
                 setRepeatMode(repeatMode || 'none');
                 
                 if (audioRef.current) {
-                    if (restoredCurrentSong) {
-                         audioRef.current.src = restoredCurrentSong.url;
-                         audioRef.current.currentTime = progress || 0;
+                    if (restoredCurrentSong && storedHandle && await verifyPermission(storedHandle)) {
+                        const fileHandle = await getFileHandleFromPath(storedHandle, restoredCurrentSong.path);
+                        if(fileHandle) {
+                            const file = await fileHandle.getFile();
+                            // Revoke previous URL if it exists
+                            if (currentlyPlayingUrl) URL.revokeObjectURL(currentlyPlayingUrl);
+                            const url = URL.createObjectURL(file);
+                            setCurrentlyPlayingUrl(url);
+                            audioRef.current.src = url;
+                            audioRef.current.currentTime = progress || 0;
+                        }
                     }
                     audioRef.current.volume = volume || 0.5;
                 }
@@ -317,7 +363,8 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     if (isMobile !== undefined) {
       checkAccessAndLoad();
     }
-  }, [isMobile, loadMusicFromHandle]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMobile]);
 
   useEffect(() => {
     const saveState = () => {
@@ -498,11 +545,30 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
   }
 
 
-  const playSong = (song: Song, newQueue?: Song[]) => {
+  const playSong = async (song: Song, newQueue?: Song[]) => {
+    if (!storedHandle || !audioRef.current) return;
+
     if (audioContextRef.current?.state === 'suspended') {
       audioContextRef.current.resume();
     }
+    
+    const fileHandle = await getFileHandleFromPath(storedHandle, song.path);
+    if (!fileHandle) {
+        toast({ title: 'File not found', description: 'Could not find the audio file for this song.', variant: 'destructive'});
+        return;
+    }
+
+    const file = await fileHandle.getFile();
+    if (currentlyPlayingUrl) {
+        URL.revokeObjectURL(currentlyPlayingUrl);
+    }
+    const url = URL.createObjectURL(file);
+
     setCurrentSong(song);
+    setCurrentlyPlayingUrl(url);
+    audioRef.current.src = url;
+    audioRef.current.load();
+    play();
     
     const songsToQueue = newQueue || songs.slice(songs.findIndex(s => s.id === song.id));
     setOriginalQueue(songsToQueue);
@@ -557,7 +623,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
       }
     }
     
-    setCurrentSong(queue[nextIndex]);
+    playSong(queue[nextIndex], queue);
   };
 
   const playPreviousSong = () => {
@@ -570,7 +636,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
 
     const currentIndex = queue.findIndex(s => s.id === currentSong.id);
     if (currentIndex > 0) {
-      setCurrentSong(queue[currentIndex - 1]);
+      playSong(queue[currentIndex - 1], queue);
     }
   };
 
