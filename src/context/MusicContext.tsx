@@ -3,7 +3,6 @@
 
 import { createContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import type { Song, Playlist, AppData } from '@/lib/types';
-import * as music from 'music-metadata-browser';
 import { useToast } from '@/hooks/use-toast';
 import { get, set, del } from '@/lib/idb';
 import { useRouter } from 'next/navigation';
@@ -45,6 +44,7 @@ interface MusicContextType {
   importData: (file: File) => void;
   hasAccess: boolean;
   isLoading: boolean;
+  isScanning: boolean;
   isPlaying: boolean;
   audioRef: React.RefObject<HTMLAudioElement>;
   analyser: AnalyserNode | null;
@@ -66,8 +66,18 @@ async function verifyPermission(directoryHandle: FileSystemDirectoryHandle, requ
     if (state === 'granted') {
         return true;
     }
-    if (request && (await directoryHandle.requestPermission(options)) === 'granted') {
-        return true;
+    // Only request permission if the user has triggered an action
+    if (request) {
+        try {
+            if ((await directoryHandle.requestPermission(options)) === 'granted') {
+                return true;
+            }
+        } catch (error) {
+            // This can happen if the user denies permission or if the browser
+            // blocks the request for security reasons (e.g., not a user gesture).
+            console.error("Permission request failed", error);
+            return false;
+        }
     }
     return false;
 }
@@ -120,10 +130,12 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
   const [originalQueue, setOriginalQueue] = useState<Song[]>([]);
   const [hasAccess, setHasAccess] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isScanning, setIsScanning] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isShuffled, setIsShuffled] = useState(false);
   const [repeatMode, setRepeatMode] = useState<RepeatMode>('none');
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const workerRef = useRef<Worker | null>(null);
   const { toast } = useToast();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -133,9 +145,40 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
   const audioContextRef = useRef<AudioContext | null>(null);
   const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
 
+  // Initialize Web Worker
+  useEffect(() => {
+    workerRef.current = new Worker(new URL('../workers/music-scanner.worker.ts', import.meta.url));
+    
+    workerRef.current.onmessage = (event: MessageEvent<{ type: string; payload: any }>) => {
+        const { type, payload } = event.data;
+        if (type === 'SCAN_COMPLETE') {
+            const { newSongs } = payload;
+            if (newSongs.length > 0) {
+                setSongs(prevSongs => [...prevSongs, ...newSongs]);
+                toast({
+                    title: 'Library Updated',
+                    description: `Found ${newSongs.length} new song(s).`,
+                });
+            }
+            setIsScanning(false);
+        } else if (type === 'SCAN_ERROR') {
+            console.error('Scan worker error:', payload.error);
+            toast({
+                title: 'Scan Error',
+                description: 'Could not scan the music folder.',
+                variant: 'destructive',
+            });
+            setIsScanning(false);
+        }
+    };
+
+    return () => {
+        workerRef.current?.terminate();
+    };
+  }, [toast]);
+
 
   useEffect(() => {
-    // Ensure this runs only once
     if (audioRef.current) return;
 
     const audioElement = new Audio();
@@ -185,106 +228,102 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         document.removeEventListener('click', resumeAudioContext);
         audioRef.current?.removeEventListener('play', handlePlay);
         audioRef.current?.removeEventListener('pause', handlePause);
-        // Do not remove the audio element from the body on cleanup
     }
   }, []);
 
   const loadMusicFromHandle = useCallback(async (dirHandle: FileSystemDirectoryHandle, isTriggeredByUser = false) => {
-    if (isTriggeredByUser) {
-        setIsLoading(true);
+    if (!workerRef.current) return;
+    
+    setIsScanning(true);
+    if(isTriggeredByUser) {
+        setSongs([]); // Clear existing songs for a full rescan triggered by user
     }
     
-    const permissionGranted = await verifyPermission(dirHandle, isTriggeredByUser);
-    if (!permissionGranted) {
-        if (isTriggeredByUser) {
-            toast({
-                title: 'Permission Denied',
-                description: 'Could not access the music folder.',
-                variant: 'destructive'
-            });
-        }
-        await del('directoryHandle');
-        storedHandle = null;
-        setHasAccess(false);
-        setIsLoading(false);
-        return;
-    }
-    
-    if (!isTriggeredByUser && !isMobile) { // Start background scan on desktop
-        // Don't set loading state for background scan
-    } else if (isTriggeredByUser) {
-        await set('directoryHandle', dirHandle);
-        storedHandle = dirHandle;
-    }
-    
+    await set('directoryHandle', dirHandle);
+    storedHandle = dirHandle;
     setHasAccess(true);
 
+    workerRef.current.postMessage({
+        type: 'SCAN_START',
+        payload: {
+            directoryHandle: dirHandle,
+            existingSongIds: isTriggeredByUser ? [] : songs.map(s => s.id)
+        }
+    });
 
-    const newSongs: Song[] = [];
-    
-    async function* getFilesRecursively(entry: FileSystemDirectoryHandle): AsyncGenerator<FileSystemFileHandle> {
+    if (isTriggeredByUser) {
+        setIsLoading(false);
+    }
+  }, [songs]);
+
+
+  // Initial load effect
+  useEffect(() => {
+    const checkAccessAndLoad = async () => {
         try {
-            for await (const child of entry.values()) {
-                if (child.kind === 'file' && (child.name.endsWith('.mp3') || child.name.endsWith('.flac') || child.name.endsWith('.m4a'))) {
-                    yield child;
-                } else if (child.kind === 'directory') {
-                    yield* getFilesRecursively(child);
+            const [handle, storedPlaylists, storedSongs, playbackState] = await Promise.all([
+                get<FileSystemDirectoryHandle>('directoryHandle'),
+                get<Playlist[]>('playlists'),
+                get<Song[]>('songs'),
+                loadPlaybackState()
+            ]);
+
+            if (storedPlaylists) setPlaylists(storedPlaylists);
+            if (storedSongs) setSongs(storedSongs);
+
+            if (handle) {
+                storedHandle = handle;
+                if (await verifyPermission(handle, false)) {
+                    setHasAccess(true);
+                    if (!isMobile) {
+                        // Start background scan on desktop
+                        loadMusicFromHandle(handle, false);
+                    }
+                } else {
+                     setHasAccess(false);
                 }
             }
-        } catch(e) {
-            console.warn(`Could not read directory ${entry.name}`, e);
-        }
-    }
+             if (playbackState && storedSongs) {
+                const { currentSongId, queueIds, originalQueueIds, isShuffled, repeatMode, progress, volume } = playbackState;
 
-    try {
-        for await (const fileHandle of getFilesRecursively(dirHandle)) {
-            try {
-                const file = await fileHandle.getFile();
-                const metadata = await music.parseBlob(file);
+                const restoredQueue = queueIds?.map(id => storedSongs.find(s => s.id === id)).filter(Boolean) as Song[] || [];
+                const restoredOriginalQueue = originalQueueIds?.map(id => storedSongs.find(s => s.id === id)).filter(Boolean) as Song[] || [];
+                const restoredCurrentSong = storedSongs.find(s => s.id === currentSongId) || null;
+
+                setQueue(restoredQueue);
+                setOriginalQueue(restoredOriginalQueue);
+                setCurrentSong(restoredCurrentSong);
+                setIsShuffled(isShuffled || false);
+                setRepeatMode(repeatMode || 'none');
                 
-                const coverArt = metadata.common.picture?.[0] 
-                    ? `data:${metadata.common.picture[0].format};base64,${metadata.common.picture[0].data.toString('base64')}`
-                    : null;
-
-                newSongs.push({
-                    id: fileHandle.name + '-' + file.size, // simple unique id
-                    title: metadata.common.title || file.name,
-                    artist: metadata.common.artist || 'Unknown Artist',
-                    album: metadata.common.album || 'Unknown Album',
-                    duration: metadata.format.duration ? new Date(metadata.format.duration * 1000).toISOString().substr(14, 5) : '0:00',
-                    coverArt: coverArt,
-                    url: URL.createObjectURL(file),
-                    fileHandle: fileHandle,
-                });
-
-            } catch(e) {
-                console.warn(`Could not read metadata for ${fileHandle.name}`, e);
+                if (audioRef.current) {
+                    if (restoredCurrentSong) {
+                         audioRef.current.src = restoredCurrentSong.url;
+                         audioRef.current.currentTime = progress || 0;
+                    }
+                    audioRef.current.volume = volume || 0.5;
+                }
             }
+        } catch (e) {
+            console.error("Could not retrieve data from IndexedDB", e);
+        } finally {
+            setIsLoading(false);
         }
-    } catch(e) {
-        console.error("Error reading music files", e);
+    };
+
+    if (isMobile !== undefined) {
+      checkAccessAndLoad();
     }
+  }, [isMobile, loadMusicFromHandle]);
 
-    const existingSongIds = new Set(songs.map(s => s.id));
-    const newSongIds = new Set(newSongs.map(s => s.id));
-    const hasChanged = newSongs.length !== songs.length || ![...newSongIds].every(id => existingSongIds.has(id));
+  // Effect to save songs to IndexedDB when they change
+  useEffect(() => {
+      if(songs.length > 0 && !isLoading) {
+          set('songs', songs);
+      }
+  }, [songs, isLoading]);
 
-    if (hasChanged) {
-        setSongs(newSongs);
 
-        if (newSongs.length > 0 && isTriggeredByUser) {
-          toast({
-              title: 'Library Updated',
-              description: `Found ${newSongs.length} songs.`,
-          })
-        }
-    }
-    
-    if (isLoading) setIsLoading(false);
-
-  }, [toast, songs, isLoading, isMobile]);
-
-  // Effect to save state whenever it changes
     useEffect(() => {
         const saveState = () => {
             if (audioRef.current) {
@@ -300,18 +339,22 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
             }
         };
 
-        const interval = setInterval(saveState, 5000); // Save every 5 seconds
-        window.addEventListener('beforeunload', saveState); // Save on closing tab
+        const interval = setInterval(saveState, 5000);
+        window.addEventListener('beforeunload', saveState);
 
         return () => {
             clearInterval(interval);
             window.removeEventListener('beforeunload', saveState);
-            saveState(); // Final save on component unmount
+            saveState();
         };
     }, [currentSong, queue, originalQueue, isShuffled, repeatMode]);
 
   const rescanMusic = useCallback(async () => {
     if (storedHandle) {
+        toast({
+            title: 'Rescanning Library',
+            description: 'Looking for new music in the background.',
+        });
         await loadMusicFromHandle(storedHandle, true);
     } else {
         toast({
@@ -332,37 +375,12 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
       storedHandle = null;
       await del('directoryHandle');
       await del('playlists');
+      await del('songs');
       localStorage.removeItem('playbackState');
       if (audioRef.current) {
         audioRef.current.src = '';
       }
   }, []);
-
-  useEffect(() => {
-    const checkAccess = async () => {
-        try {
-            const handle = await get<FileSystemDirectoryHandle>('directoryHandle');
-            const storedPlaylists = await get<Playlist[]>('playlists');
-            if (storedPlaylists) {
-                setPlaylists(storedPlaylists);
-            }
-            if (handle) {
-                storedHandle = handle;
-                // On non-mobile, we can scan in the background. On mobile, we can't.
-                // The `loadMusicFromHandle` function handles the logic internally now.
-                await loadMusicFromHandle(handle, false);
-            }
-        } catch (e) {
-            console.error("Could not retrieve data from IndexedDB", e);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-    if (isMobile !== undefined) {
-        checkAccess();
-    }
-  }, [loadMusicFromHandle, isMobile]);
-
 
   const createPlaylist = async (name: string) => {
     const newPlaylist: Playlist = {
@@ -408,7 +426,6 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         description: `"${playlist.name}" has been deleted.`,
         variant: 'destructive'
       });
-      // Navigate away if viewing the deleted playlist is complex here. Handled in component.
     }
   }
 
@@ -499,7 +516,6 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
       if (repeatMode === 'all') {
         nextIndex = 0;
       } else {
-        // Stop playing at the end of the queue if not repeating
         if (audioRef.current) {
            audioRef.current.currentTime = audioRef.current.duration;
            pause();
@@ -566,13 +582,11 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         if (!currentSong) return newShuffleState;
 
         if (newShuffleState) {
-            // Shuffle the rest of the queue, keeping the current song at the top
             const currentSongInQueue = queue.find(s => s.id === currentSong.id);
             if (!currentSongInQueue) return newShuffleState;
             const rest = queue.filter((s) => s.id !== currentSong.id);
             setQueue([currentSongInQueue, ...shuffleArray(rest)]);
         } else {
-            // Revert to original order, finding current song's position
              const originalIndex = originalQueue.findIndex(s => s.id === currentSong.id);
              if (originalIndex !== -1) {
                 const reordered = [...originalQueue];
@@ -665,6 +679,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         importData,
         hasAccess,
         isLoading,
+        isScanning,
         isPlaying,
         audioRef,
         analyser,
@@ -679,3 +694,5 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     </MusicContext.Provider>
   );
 };
+
+    

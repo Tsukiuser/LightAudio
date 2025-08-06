@@ -22,10 +22,6 @@ export default function HomePage() {
   const recentlyAddedSongs = [...songs].reverse().slice(0, 12);
 
   const handleRescanFolder = async () => {
-    toast({
-        title: 'Rescanning Library',
-        description: 'Please wait while we look for new music.',
-    });
     await musicContext?.rescanMusic();
   }
 
@@ -33,11 +29,11 @@ export default function HomePage() {
     try {
         // @ts-ignore
         const dirHandle = await window.showDirectoryPicker();
-        await musicContext?.loadMusic(dirHandle);
         toast({
             title: 'Folder Changed',
-            description: 'Your music library is being updated.',
-        })
+            description: 'Your music library is being updated in the background.',
+        });
+        await musicContext?.loadMusic(dirHandle);
     } catch (error) {
        console.error('Error accessing directory:', error);
        if (error instanceof DOMException && error.name === 'AbortError') {
@@ -86,7 +82,7 @@ export default function HomePage() {
     );
   }
 
-  if (songs.length === 0) {
+  if (songs.length === 0 && !musicContext?.isScanning) {
     return (
       <div className="container mx-auto max-w-7xl px-0">
         <PageHeader title="Home" />
@@ -97,11 +93,11 @@ export default function HomePage() {
             Please try rescanning or choose a different folder.
           </p>
           <div className="flex gap-4">
-            <Button variant="outline" onClick={handleRescanFolder}>
+            <Button variant="outline" onClick={handleRescanFolder} disabled={!musicContext?.hasAccess || musicContext?.isScanning}>
               <RefreshCw className="mr-2 h-4 w-4" />
               Rescan Folder
             </Button>
-            <Button onClick={handleChangeFolder}>
+            <Button onClick={handleChangeFolder} disabled={musicContext?.isScanning}>
               <FolderSync className="mr-2 h-4 w-4" />
               Change Folder
             </Button>
@@ -114,7 +110,9 @@ export default function HomePage() {
   return (
     <ScrollArea className="h-full">
       <div className="container mx-auto max-w-7xl px-0 pb-8">
-        <PageHeader title="Home" />
+        <PageHeader title="Home">
+            {musicContext?.isScanning && <div className="text-sm text-primary animate-pulse">Scanning...</div>}
+        </PageHeader>
 
         <section className="px-2 md:px-4">
             <h2 className="text-xl font-semibold text-foreground mb-4 px-2">Recently Added Songs</h2>
@@ -129,7 +127,7 @@ export default function HomePage() {
           <h2 className="text-xl font-semibold text-foreground mb-4">Recently Added Albums</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
             {recentlyAddedAlbums.map((album) => (
-              <AlbumCard key={album.name} album={album} />
+              <AlbumCard key={`${album.name}-${album.artist}`} album={album} />
             ))}
           </div>
         </section>
@@ -138,7 +136,7 @@ export default function HomePage() {
           <h2 className="text-xl font-semibold text-foreground mb-4">All Albums</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
             {albums.map((album) => (
-              <AlbumCard key={album.name} album={album} />
+              <AlbumCard key={`${album.name}-${album.artist}`} album={album} />
             ))}
           </div>
         </section>
@@ -146,3 +144,5 @@ export default function HomePage() {
     </ScrollArea>
   );
 }
+
+    

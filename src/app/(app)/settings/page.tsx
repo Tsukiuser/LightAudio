@@ -67,11 +67,11 @@ export default function SettingsPage() {
         try {
             // @ts-ignore
             const dirHandle = await window.showDirectoryPicker();
-            await musicContext?.loadMusic(dirHandle);
             toast({
                 title: 'Folder Changed',
-                description: 'Your music library is being updated.',
-            })
+                description: 'Your music library is being updated in the background.',
+            });
+            await musicContext?.loadMusic(dirHandle);
         } catch (error) {
            console.error('Error accessing directory:', error);
            if (error instanceof DOMException && (error.name === 'AbortError' || error.name === 'NotAllowedError')) {
@@ -87,10 +87,6 @@ export default function SettingsPage() {
     }
 
     const handleRescanFolder = async () => {
-        toast({
-            title: 'Rescanning Library',
-            description: 'Please wait while we look for new music.',
-        });
         await musicContext?.rescanMusic();
     }
     
@@ -119,7 +115,6 @@ export default function SettingsPage() {
     const handleResetTheme = () => {
         localStorage.setItem('theme', 'dark');
         window.dispatchEvent(new Event('theme-changed'));
-        // We might need to force a re-render of the toggle if it doesn't listen to storage
         window.location.reload(); 
     }
 
@@ -233,20 +228,21 @@ export default function SettingsPage() {
               <CardTitle>Storage</CardTitle>
               <CardDescription>
                 Manage the folder where your music is stored and scan for new content.
+                 {musicContext?.isScanning && <span className="text-primary animate-pulse ml-2">Scanning...</span>}
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={handleChangeFolder}>
+              <Button variant="outline" onClick={handleChangeFolder} disabled={musicContext?.isScanning}>
                 <FolderSync className="mr-2 h-4 w-4" />
                 Change Music Folder
               </Button>
-               <Button variant="outline" onClick={handleRescanFolder} disabled={!musicContext?.hasAccess}>
+               <Button variant="outline" onClick={handleRescanFolder} disabled={!musicContext?.hasAccess || musicContext?.isScanning}>
                 <RefreshCw className="mr-2 h-4 w-4" />
                 Rescan Folder
               </Button>
               <AlertDialog>
                     <AlertDialogTrigger asChild>
-                         <Button variant="destructive" disabled={!musicContext?.hasAccess}>
+                         <Button variant="destructive" disabled={!musicContext?.hasAccess || musicContext?.isScanning}>
                             <Trash2 className="mr-2 h-4 w-4" />
                             Clear Library
                         </Button>
@@ -316,7 +312,7 @@ export default function SettingsPage() {
               <CardTitle>Credits</CardTitle>
             </CardHeader>
             <CardContent>
-                <p className="text-sm text-muted-foreground">Version 2.1.0</p>
+                <p className="text-sm text-muted-foreground">Version 2.2.0</p>
                 <p className="text-sm text-muted-foreground mt-1">Made by Victor Martinez on Firebase Studio</p>
             </CardContent>
           </Card>
@@ -325,3 +321,5 @@ export default function SettingsPage() {
     </ScrollArea>
   );
 }
+
+    

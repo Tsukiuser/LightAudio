@@ -51,6 +51,19 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+   webpack: (config, { isServer }) => {
+    // This is to support our music scanner web worker
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        'fs/promises': false,
+        'path': false,
+      };
+    }
+    return config;
+  },
 };
 
 export default withPWA(nextConfig);
+
+    
