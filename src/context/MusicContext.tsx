@@ -144,6 +144,35 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
   const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
+  
+  const loadMusicFromHandle = useCallback(async (dirHandle: FileSystemDirectoryHandle, isFullRescan = false) => {
+    if (!workerRef.current) return;
+    
+    setIsScanning(true);
+    
+    if (isFullRescan) {
+      setSongs([]);
+    }
+    
+    await set('directoryHandle', dirHandle);
+    storedHandle = dirHandle;
+    setHasAccess(true);
+    
+    // Pass current songs to avoid duplicates
+    const currentSongs = await get<Song[]>('songs') || [];
+
+    workerRef.current.postMessage({
+        type: 'SCAN_START',
+        payload: {
+            directoryHandle: dirHandle,
+            existingSongIds: isFullRescan ? [] : currentSongs.map(s => s.id)
+        }
+    });
+
+    if (isFullRescan) {
+        setIsLoading(false);
+    }
+  }, []);
 
   // Initialize Web Worker
   useEffect(() => {
@@ -154,7 +183,11 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         if (type === 'SCAN_COMPLETE') {
             const { newSongs } = payload;
             if (newSongs.length > 0) {
-                setSongs(prevSongs => [...prevSongs, ...newSongs]);
+                setSongs(prevSongs => {
+                    const existingIds = new Set(prevSongs.map(s => s.id));
+                    const trulyNew = newSongs.filter((s: Song) => !existingIds.has(s.id));
+                    return [...prevSongs, ...trulyNew];
+                });
                 toast({
                     title: 'Library Updated',
                     description: `Found ${newSongs.length} new song(s).`,
@@ -230,32 +263,6 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         audioRef.current?.removeEventListener('pause', handlePause);
     }
   }, []);
-
-  const loadMusicFromHandle = useCallback(async (dirHandle: FileSystemDirectoryHandle, isTriggeredByUser = false) => {
-    if (!workerRef.current) return;
-    
-    setIsScanning(true);
-    if(isTriggeredByUser) {
-        setSongs([]); // Clear existing songs for a full rescan triggered by user
-    }
-    
-    await set('directoryHandle', dirHandle);
-    storedHandle = dirHandle;
-    setHasAccess(true);
-
-    workerRef.current.postMessage({
-        type: 'SCAN_START',
-        payload: {
-            directoryHandle: dirHandle,
-            existingSongIds: isTriggeredByUser ? [] : songs.map(s => s.id)
-        }
-    });
-
-    if (isTriggeredByUser) {
-        setIsLoading(false);
-    }
-  }, [songs]);
-
 
   // Initial load effect
   useEffect(() => {
@@ -694,5 +701,3 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     </MusicContext.Provider>
   );
 };
-
-    
