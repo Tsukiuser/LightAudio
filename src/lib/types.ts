@@ -7,7 +7,6 @@ export type Song = {
   duration: string;
   coverArt: string | null;
   url: string;
-  fileHandle?: FileSystemFileHandle;
 };
 
 export type Album = {

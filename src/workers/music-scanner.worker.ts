@@ -2,13 +2,15 @@
 /// <reference lib="webworker" />
 import * as music from 'music-metadata-browser';
 import type { Song } from '@/lib/types';
+import { formatDuration } from '@/lib/utils';
+
 
 declare const self: DedicatedWorkerGlobalScope;
 
 async function* getFilesRecursively(entry: FileSystemDirectoryHandle): AsyncGenerator<FileSystemFileHandle> {
     try {
         for await (const child of entry.values()) {
-            if (child.kind === 'file' && (child.name.endsWith('.mp3') || child.name.endsWith('.flac') || child.name.endsWith('.m4a'))) {
+            if (child.kind === 'file' && (child.name.endsWith('.mp3') || child.name.endsWith('.flac') || child.name.endsWith('.m4a') || child.name.endsWith('.wav') || child.name.endsWith('.ogg'))) {
                 yield child;
             } else if (child.kind === 'directory') {
                 yield* getFilesRecursively(child);
@@ -16,7 +18,6 @@ async function* getFilesRecursively(entry: FileSystemDirectoryHandle): AsyncGene
         }
     } catch(e) {
         console.warn(`Could not read directory ${entry.name}`, e);
-        // Post an error message back to the main thread might be useful
         self.postMessage({ type: 'SCAN_ERROR', payload: { error: `Could not read directory: ${entry.name}` } });
     }
 }
@@ -31,14 +32,14 @@ self.onmessage = async (event: MessageEvent<{ type: string; payload: any }>) => 
 
         try {
             for await (const fileHandle of getFilesRecursively(directoryHandle)) {
-                const songId = fileHandle.name + '-' + (await fileHandle.getFile()).size;
+                const file = await fileHandle.getFile();
+                const songId = file.name + '-' + file.size;
 
                 if (existingIdSet.has(songId)) {
                     continue; // Skip already processed files
                 }
 
                 try {
-                    const file = await fileHandle.getFile();
                     const metadata = await music.parseBlob(file, { skipCovers: false });
                     
                     const coverArt = metadata.common.picture?.[0] 
@@ -50,10 +51,9 @@ self.onmessage = async (event: MessageEvent<{ type: string; payload: any }>) => 
                         title: metadata.common.title || file.name,
                         artist: metadata.common.artist || 'Unknown Artist',
                         album: metadata.common.album || 'Unknown Album',
-                        duration: metadata.format.duration ? new Date(metadata.format.duration * 1000).toISOString().substr(14, 5) : '0:00',
+                        duration: formatDuration(metadata.format.duration || 0),
                         coverArt: coverArt,
                         url: URL.createObjectURL(file),
-                        fileHandle: fileHandle,
                     });
 
                 } catch(e) {
@@ -71,5 +71,3 @@ self.onmessage = async (event: MessageEvent<{ type: string; payload: any }>) => 
 };
 
 export {};
-
-    

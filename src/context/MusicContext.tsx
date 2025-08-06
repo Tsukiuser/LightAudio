@@ -5,8 +5,9 @@ import { createContext, useState, useEffect, ReactNode, useCallback, useRef } fr
 import type { Song, Playlist, AppData } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { get, set, del } from '@/lib/idb';
-import { useRouter } from 'next/navigation';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { arrayMove } from '@dnd-kit/sortable';
+
 
 type RepeatMode = 'none' | 'all' | 'one';
 type PlaybackState = {
@@ -26,6 +27,8 @@ interface MusicContextType {
   renamePlaylist: (playlistId: string, newName: string) => Promise<void>;
   deletePlaylist: (playlistId: string) => Promise<void>;
   addSongToPlaylist: (playlistId: string, songId: string) => Promise<void>;
+  removeSongFromPlaylist: (playlistId: string, songId: string) => Promise<void>;
+  reorderPlaylist: (playlistId: string, from: number, to: number) => Promise<void>;
   getPlaylistSongs: (playlistId: string) => Song[];
   currentSong: Song | null;
   queue: Song[];
@@ -36,7 +39,7 @@ interface MusicContextType {
   addToQueue: (song: Song) => void;
   removeFromQueue: (songId: string) => void;
   clearQueue: () => void;
-  reorderQueue: (oldIndex: number, newIndex: number) => void;
+  reorderQueue: (from: number, to: number) => void;
   loadMusic: (directoryHandle: FileSystemDirectoryHandle) => Promise<void>;
   rescanMusic: () => Promise<void>;
   clearLibrary: () => void;
@@ -66,16 +69,13 @@ async function verifyPermission(directoryHandle: FileSystemDirectoryHandle, requ
     if (state === 'granted') {
         return true;
     }
-    // Only request permission if the user has triggered an action
     if (request) {
         try {
             if ((await directoryHandle.requestPermission(options)) === 'granted') {
                 return true;
             }
         } catch (error) {
-            // This can happen if the user denies permission or if the browser
-            // blocks the request for security reasons (e.g., not a user gesture).
-            console.error("Permission request failed", error);
+            console.error("Permission request failed. This usually means it was not triggered by a user gesture.", error);
             return false;
         }
     }
@@ -137,7 +137,6 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const workerRef = useRef<Worker | null>(null);
   const { toast } = useToast();
-  const router = useRouter();
   const isMobile = useIsMobile();
 
 
@@ -146,7 +145,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
   const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
   
   const loadMusicFromHandle = useCallback(async (dirHandle: FileSystemDirectoryHandle, isFullRescan = false) => {
-    if (!workerRef.current) return;
+    if (!workerRef.current || isScanning) return;
     
     setIsScanning(true);
     
@@ -158,21 +157,20 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     storedHandle = dirHandle;
     setHasAccess(true);
     
-    // Pass current songs to avoid duplicates
-    const currentSongs = await get<Song[]>('songs') || [];
+    const currentSongs = isFullRescan ? [] : await get<Song[]>('songs') || [];
 
     workerRef.current.postMessage({
         type: 'SCAN_START',
         payload: {
             directoryHandle: dirHandle,
-            existingSongIds: isFullRescan ? [] : currentSongs.map(s => s.id)
+            existingSongIds: currentSongs.map(s => s.id)
         }
     });
 
     if (isFullRescan) {
         setIsLoading(false);
     }
-  }, []);
+  }, [isScanning]);
 
   // Initialize Web Worker
   useEffect(() => {
@@ -186,7 +184,9 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
                 setSongs(prevSongs => {
                     const existingIds = new Set(prevSongs.map(s => s.id));
                     const trulyNew = newSongs.filter((s: Song) => !existingIds.has(s.id));
-                    return [...prevSongs, ...trulyNew];
+                    const updatedSongs = [...prevSongs, ...trulyNew];
+                    set('songs', updatedSongs); // Persist to IndexedDB
+                    return updatedSongs;
                 });
                 toast({
                     title: 'Library Updated',
@@ -283,7 +283,6 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
                 if (await verifyPermission(handle, false)) {
                     setHasAccess(true);
                     if (!isMobile) {
-                        // Start background scan on desktop
                         loadMusicFromHandle(handle, false);
                     }
                 } else {
@@ -323,46 +322,46 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [isMobile, loadMusicFromHandle]);
 
-  // Effect to save songs to IndexedDB when they change
   useEffect(() => {
-      if(songs.length > 0 && !isLoading) {
-          set('songs', songs);
-      }
-  }, [songs, isLoading]);
+    const saveState = () => {
+        if (audioRef.current) {
+            savePlaybackState({
+                currentSongId: currentSong?.id,
+                queueIds: queue.map(s => s.id),
+                originalQueueIds: originalQueue.map(s => s.id),
+                isShuffled,
+                repeatMode,
+                progress: audioRef.current?.currentTime,
+                volume: audioRef.current?.volume
+            });
+        }
+    };
 
+    const interval = setInterval(saveState, 5000);
+    window.addEventListener('beforeunload', saveState);
 
-    useEffect(() => {
-        const saveState = () => {
-            if (audioRef.current) {
-                savePlaybackState({
-                    currentSongId: currentSong?.id,
-                    queueIds: queue.map(s => s.id),
-                    originalQueueIds: originalQueue.map(s => s.id),
-                    isShuffled,
-                    repeatMode,
-                    progress: audioRef.current?.currentTime,
-                    volume: audioRef.current?.volume
-                });
-            }
-        };
-
-        const interval = setInterval(saveState, 5000);
-        window.addEventListener('beforeunload', saveState);
-
-        return () => {
-            clearInterval(interval);
-            window.removeEventListener('beforeunload', saveState);
-            saveState();
-        };
-    }, [currentSong, queue, originalQueue, isShuffled, repeatMode]);
+    return () => {
+        clearInterval(interval);
+        window.removeEventListener('beforeunload', saveState);
+        saveState();
+    };
+  }, [currentSong, queue, originalQueue, isShuffled, repeatMode]);
 
   const rescanMusic = useCallback(async () => {
     if (storedHandle) {
-        toast({
-            title: 'Rescanning Library',
-            description: 'Looking for new music in the background.',
-        });
-        await loadMusicFromHandle(storedHandle, true);
+        if (await verifyPermission(storedHandle, true)) {
+            toast({
+                title: 'Rescanning Library',
+                description: 'Looking for new music in the background.',
+            });
+            await loadMusicFromHandle(storedHandle, false);
+        } else {
+             toast({
+                title: 'Permission Denied',
+                description: 'Permission to access the folder was denied.',
+                variant: 'destructive'
+            })
+        }
     } else {
         toast({
             title: 'No Folder Selected',
@@ -464,10 +463,34 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         description: `Added to "${playlistName}".`,
     });
   }
+  
+  const removeSongFromPlaylist = async (playlistId: string, songId: string) => {
+    const updatedPlaylists = playlists.map(p => {
+        if (p.id === playlistId) {
+            return { ...p, songIds: p.songIds.filter(id => id !== songId) };
+        }
+        return p;
+    });
+    setPlaylists(updatedPlaylists);
+    await set('playlists', updatedPlaylists);
+  }
+
+  const reorderPlaylist = async (playlistId: string, from: number, to: number) => {
+    const updatedPlaylists = playlists.map(p => {
+        if (p.id === playlistId) {
+            const reorderedSongIds = arrayMove(p.songIds, from, to);
+            return { ...p, songIds: reorderedSongIds };
+        }
+        return p;
+    });
+    setPlaylists(updatedPlaylists);
+    await set('playlists', updatedPlaylists);
+  }
 
   const getPlaylistSongs = (playlistId: string): Song[] => {
     const playlist = playlists.find(p => p.id === playlistId);
     if (!playlist) return [];
+    // Ensure the order from the playlist is respected
     return playlist.songIds.map(songId => songs.find(s => s.id === songId)).filter(Boolean) as Song[];
   }
 
@@ -560,11 +583,9 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
       setOriginalQueue(prev => prev.filter(s => s.id !== songId));
   }
   
-  const reorderQueue = (oldIndex: number, newIndex: number) => {
+  const reorderQueue = (from: number, to: number) => {
     setQueue(currentQueue => {
-        const newQueue = [...currentQueue];
-        const [movedItem] = newQueue.splice(oldIndex, 1);
-        newQueue.splice(newIndex, 0, movedItem);
+        const newQueue = arrayMove(currentQueue, from, to);
         return newQueue;
     });
   }
@@ -668,6 +689,8 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         renamePlaylist,
         deletePlaylist,
         addSongToPlaylist,
+        removeSongFromPlaylist,
+        reorderPlaylist,
         getPlaylistSongs,
         currentSong, 
         queue, 

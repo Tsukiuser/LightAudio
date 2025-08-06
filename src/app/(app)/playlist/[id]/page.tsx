@@ -9,7 +9,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { SongItem } from '@/components/SongItem';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Play, ListMusic, AlertTriangle, MoreHorizontal } from 'lucide-react';
+import { Play, ListMusic, AlertTriangle, MoreHorizontal, GripVertical } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
@@ -24,6 +24,38 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { RenamePlaylistDialog } from '@/components/RenamePlaylistDialog';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+
+function SortablePlaylistItem({ song, onRemove }: { song: Song, onRemove: (songId: string) => void }) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({ id: song.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+    };
+
+    return (
+        <div ref={setNodeRef} style={style} {...attributes}>
+            <SongItem
+                song={song}
+                onRemove={() => onRemove(song.id)}
+                dragHandleProps={listeners}
+                isDragging={isDragging}
+            />
+        </div>
+    );
+}
+
 
 export default function PlaylistDetailPage({ params }: { params: { id: string } }) {
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
@@ -61,6 +93,29 @@ export default function PlaylistDetailPage({ params }: { params: { id: string } 
       router.push('/library');
     }
   }
+
+  const handleRemoveSong = (songId: string) => {
+    if (playlist) {
+        musicContext?.removeSongFromPlaylist(playlist.id, songId);
+    }
+  }
+  
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor)
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (playlist && over && active.id !== over.id) {
+        const oldIndex = songs.findIndex((s) => s.id === active.id);
+        const newIndex = songs.findIndex((s) => s.id === over.id);
+        if (oldIndex !== -1 && newIndex !== -1) {
+          musicContext?.reorderPlaylist(playlist.id, oldIndex, newIndex);
+        }
+    }
+  };
+
 
   if (musicContext?.isLoading || !playlist) {
     return (
@@ -138,9 +193,13 @@ export default function PlaylistDetailPage({ params }: { params: { id: string } 
         <div className="mt-8 px-2 md:px-4">
           <div className="flex flex-col">
             {songs.length > 0 ? (
-                songs.map((song) => (
-                    <SongItem key={song.id} song={song} queue={songs} />
-                ))
+                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                    <SortableContext items={songs.map(s => s.id)} strategy={verticalListSortingStrategy}>
+                        {songs.map((song) => (
+                            <SortablePlaylistItem key={song.id} song={song} onRemove={handleRemoveSong}/>
+                        ))}
+                    </SortableContext>
+                </DndContext>
             ) : (
                 <div className="text-center text-muted-foreground py-10">
                     <p>This playlist is empty.</p>
