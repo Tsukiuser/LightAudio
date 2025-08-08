@@ -280,6 +280,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     setCurrentlyPlayingUrl(url);
     audioRef.current.src = url;
     audioRef.current.load();
+    audioRef.current.play().catch(e => console.error("Playback failed", e));
     
     const songsToQueue = newQueue || songs.slice(songs.findIndex(s => s.id === song.id));
     setOriginalQueue(songsToQueue);
@@ -290,8 +291,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     } else {
         setQueue(songsToQueue);
     }
-    play();
-  }, [songs, isShuffled, currentlyPlayingUrl, toast, play]);
+  }, [songs, isShuffled, currentlyPlayingUrl, toast]);
 
   const playNextSong = useCallback(() => {
     if (!currentSong || queue.length === 0) return;
@@ -312,7 +312,9 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
       if (repeatMode === 'all') {
         nextIndex = 0;
       } else {
-        return; // End of queue, just stop.
+        // End of queue, just stop.
+        setIsPlaying(false); 
+        return; 
       }
     }
     
@@ -354,11 +356,10 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
 
     const handlePlay = () => setIsPlaying(true);
     const handlePause = () => setIsPlaying(false);
-    const onEnded = () => playNextSong();
     
     audioRef.current?.addEventListener('play', handlePlay);
     audioRef.current?.addEventListener('pause', handlePause);
-    audioRef.current?.addEventListener('ended', onEnded);
+    audioRef.current?.addEventListener('ended', playNextSong);
 
 
     const resumeAudioContext = () => {
@@ -373,7 +374,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         document.removeEventListener('click', resumeAudioContext);
         audioRef.current?.removeEventListener('play', handlePlay);
         audioRef.current?.removeEventListener('pause', handlePause);
-        audioRef.current?.removeEventListener('ended', onEnded);
+        audioRef.current?.removeEventListener('ended', playNextSong);
     }
   }, [playNextSong]);
 
@@ -740,7 +741,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     a.href = url;
     a.download = `lightaudio_backup_${new Date().toISOString().split('T')[0]}.txt`;
     document.body.appendChild(a);
-    a.click();
+a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
