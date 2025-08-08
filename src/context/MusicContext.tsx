@@ -242,56 +242,18 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
   }, [toast]);
 
 
-  useEffect(() => {
-    if (audioRef.current) return;
-
-    const audioElement = new Audio();
-    audioElement.id = 'audio-player-core';
-    document.body.appendChild(audioElement);
-    audioRef.current = audioElement;
-
-    const setupAudioContext = () => {
-        if (audioRef.current && !audioContextRef.current) {
-            try {
-                const context = new (window.AudioContext || (window as any).webkitAudioContext)();
-                audioContextRef.current = context;
-                
-                const analyserNode = context.createAnalyser();
-                analyserNode.fftSize = 256;
-                setAnalyser(analyserNode);
-
-                if (!sourceNodeRef.current) {
-                    const source = context.createMediaElementSource(audioRef.current);
-                    sourceNodeRef.current = source;
-                    source.connect(analyserNode);
-                    analyserNode.connect(context.destination);
-                }
-            } catch (e) {
-                console.error("Web Audio API is not supported in this browser", e);
-            }
-        }
-    };
-
-    setupAudioContext();
-
-    const handlePlay = () => setIsPlaying(true);
-    const handlePause = () => setIsPlaying(false);
-    
-    audioRef.current?.addEventListener('play', handlePlay);
-    audioRef.current?.addEventListener('pause', handlePause);
-
-    const resumeAudioContext = () => {
+  const play = useCallback(() => {
+    if (audioRef.current) {
         if (audioContextRef.current?.state === 'suspended') {
-            audioContextRef.current.resume();
+          audioContextRef.current.resume();
         }
-    };
-    
-    document.addEventListener('click', resumeAudioContext, { once: true });
-    
-    return () => {
-        document.removeEventListener('click', resumeAudioContext);
-        audioRef.current?.removeEventListener('play', handlePlay);
-        audioRef.current?.removeEventListener('pause', handlePause);
+        audioRef.current.play().catch(e => console.error("Playback failed", e));
+    }
+  }, []);
+
+  const pause = useCallback(() => {
+    if (audioRef.current) {
+        audioRef.current.pause();
     }
   }, []);
 
@@ -329,22 +291,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         setQueue(songsToQueue);
     }
     play();
-  }, [songs, isShuffled, currentlyPlayingUrl, toast]);
-
-  const play = useCallback(() => {
-    if (audioRef.current) {
-        if (audioContextRef.current?.state === 'suspended') {
-          audioContextRef.current.resume();
-        }
-        audioRef.current.play().catch(e => console.error("Playback failed", e));
-    }
-  }, []);
-
-  const pause = useCallback(() => {
-    if (audioRef.current) {
-        audioRef.current.pause();
-    }
-  }, []);
+  }, [songs, isShuffled, currentlyPlayingUrl, toast, play]);
 
   const playNextSong = useCallback(() => {
     if (!currentSong || queue.length === 0) return;
@@ -365,16 +312,70 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
       if (repeatMode === 'all') {
         nextIndex = 0;
       } else {
-        if (audioRef.current) {
-           audioRef.current.currentTime = audioRef.current.duration;
-           pause();
-        }
-        return;
+        return; // End of queue, just stop.
       }
     }
     
     playSong(queue[nextIndex], queue);
-  }, [currentSong, queue, repeatMode, playSong, play, pause]);
+  }, [currentSong, queue, repeatMode, playSong, play]);
+
+
+  useEffect(() => {
+    if (audioRef.current) return;
+
+    const audioElement = new Audio();
+    audioElement.id = 'audio-player-core';
+    document.body.appendChild(audioElement);
+    audioRef.current = audioElement;
+
+    const setupAudioContext = () => {
+        if (audioRef.current && !audioContextRef.current) {
+            try {
+                const context = new (window.AudioContext || (window as any).webkitAudioContext)();
+                audioContextRef.current = context;
+                
+                const analyserNode = context.createAnalyser();
+                analyserNode.fftSize = 256;
+                setAnalyser(analyserNode);
+
+                if (!sourceNodeRef.current) {
+                    const source = context.createMediaElementSource(audioRef.current);
+                    sourceNodeRef.current = source;
+                    source.connect(analyserNode);
+                    analyserNode.connect(context.destination);
+                }
+            } catch (e) {
+                console.error("Web Audio API is not supported in this browser", e);
+            }
+        }
+    };
+
+    setupAudioContext();
+
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
+    const onEnded = () => playNextSong();
+    
+    audioRef.current?.addEventListener('play', handlePlay);
+    audioRef.current?.addEventListener('pause', handlePause);
+    audioRef.current?.addEventListener('ended', onEnded);
+
+
+    const resumeAudioContext = () => {
+        if (audioContextRef.current?.state === 'suspended') {
+            audioContextRef.current.resume();
+        }
+    };
+    
+    document.addEventListener('click', resumeAudioContext, { once: true });
+    
+    return () => {
+        document.removeEventListener('click', resumeAudioContext);
+        audioRef.current?.removeEventListener('play', handlePlay);
+        audioRef.current?.removeEventListener('pause', handlePause);
+        audioRef.current?.removeEventListener('ended', onEnded);
+    }
+  }, [playNextSong]);
 
   const playPreviousSong = useCallback(() => {
     if (!currentSong || queue.length === 0) return;
