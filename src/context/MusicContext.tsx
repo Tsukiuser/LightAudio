@@ -295,6 +295,127 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
+  const playSong = useCallback(async (song: Song, newQueue?: Song[]) => {
+    if (!storedHandle || !audioRef.current) return;
+
+    if (audioContextRef.current?.state === 'suspended') {
+      await audioContextRef.current.resume();
+    }
+    
+    const fileHandle = await getFileHandleFromPath(storedHandle, song.path);
+    if (!fileHandle) {
+        toast({ title: 'File not found', description: 'Could not find the audio file for this song.', variant: 'destructive'});
+        return;
+    }
+
+    const file = await fileHandle.getFile();
+    if (currentlyPlayingUrl) {
+        URL.revokeObjectURL(currentlyPlayingUrl);
+    }
+    const url = URL.createObjectURL(file);
+
+    setCurrentSong(song);
+    setCurrentlyPlayingUrl(url);
+    audioRef.current.src = url;
+    audioRef.current.load();
+    
+    const songsToQueue = newQueue || songs.slice(songs.findIndex(s => s.id === song.id));
+    setOriginalQueue(songsToQueue);
+
+    if (isShuffled) {
+        const shuffledQueue = shuffleArray(songsToQueue.filter(s => s.id !== song.id));
+        setQueue([song, ...shuffledQueue]);
+    } else {
+        setQueue(songsToQueue);
+    }
+    play();
+  }, [songs, isShuffled, currentlyPlayingUrl, toast]);
+
+  const play = useCallback(() => {
+    if (audioRef.current) {
+        if (audioContextRef.current?.state === 'suspended') {
+          audioContextRef.current.resume();
+        }
+        audioRef.current.play().catch(e => console.error("Playback failed", e));
+    }
+  }, []);
+
+  const pause = useCallback(() => {
+    if (audioRef.current) {
+        audioRef.current.pause();
+    }
+  }, []);
+
+  const playNextSong = useCallback(() => {
+    if (!currentSong || queue.length === 0) return;
+    
+    if (repeatMode === 'one') {
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+        play();
+      }
+      return;
+    }
+
+    const currentIndex = queue.findIndex(s => s.id === currentSong.id);
+    if (currentIndex === -1) return;
+
+    let nextIndex = currentIndex + 1;
+    if (nextIndex >= queue.length) {
+      if (repeatMode === 'all') {
+        nextIndex = 0;
+      } else {
+        if (audioRef.current) {
+           audioRef.current.currentTime = audioRef.current.duration;
+           pause();
+        }
+        return;
+      }
+    }
+    
+    playSong(queue[nextIndex], queue);
+  }, [currentSong, queue, repeatMode, playSong, play, pause]);
+
+  const playPreviousSong = useCallback(() => {
+    if (!currentSong || queue.length === 0) return;
+
+    if (audioRef.current && audioRef.current.currentTime > 3) {
+      audioRef.current.currentTime = 0;
+      return;
+    }
+
+    const currentIndex = queue.findIndex(s => s.id === currentSong.id);
+    if (currentIndex > 0) {
+      playSong(queue[currentIndex - 1], queue);
+    }
+  }, [currentSong, queue, playSong]);
+
+  // Media Session API integration
+  useEffect(() => {
+    if ('mediaSession' in navigator) {
+      if (currentSong) {
+        const artwork = currentSong.coverArt ? [{ src: currentSong.coverArt, sizes: '512x512', type: 'image/jpeg' }] : [];
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: currentSong.title,
+          artist: currentSong.artist,
+          album: currentSong.album,
+          artwork: artwork
+        });
+      }
+      navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+    }
+  }, [currentSong, isPlaying]);
+
+  useEffect(() => {
+    if ('mediaSession' in navigator) {
+        navigator.mediaSession.setActionHandler('play', play);
+        navigator.mediaSession.setActionHandler('pause', pause);
+        navigator.mediaSession.setActionHandler('previoustrack', playPreviousSong);
+        navigator.mediaSession.setActionHandler('nexttrack', playNextSong);
+    }
+  }, [play, pause, playPreviousSong, playNextSong]);
+
+
   // Initial load effect
   useEffect(() => {
     const checkAccessAndLoad = async () => {
@@ -542,101 +663,6 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     return playlist.songIds.map(songId => songs.find(s => s.id === songId)).filter(Boolean) as Song[];
   }
 
-
-  const playSong = async (song: Song, newQueue?: Song[]) => {
-    if (!storedHandle || !audioRef.current) return;
-
-    if (audioContextRef.current?.state === 'suspended') {
-      audioContextRef.current.resume();
-    }
-    
-    const fileHandle = await getFileHandleFromPath(storedHandle, song.path);
-    if (!fileHandle) {
-        toast({ title: 'File not found', description: 'Could not find the audio file for this song.', variant: 'destructive'});
-        return;
-    }
-
-    const file = await fileHandle.getFile();
-    if (currentlyPlayingUrl) {
-        URL.revokeObjectURL(currentlyPlayingUrl);
-    }
-    const url = URL.createObjectURL(file);
-
-    setCurrentSong(song);
-    setCurrentlyPlayingUrl(url);
-    audioRef.current.src = url;
-    audioRef.current.load();
-    play();
-    
-    const songsToQueue = newQueue || songs.slice(songs.findIndex(s => s.id === song.id));
-    setOriginalQueue(songsToQueue);
-
-    if (isShuffled) {
-        const shuffledQueue = shuffleArray(songsToQueue.filter(s => s.id !== song.id));
-        setQueue([song, ...shuffledQueue]);
-    } else {
-        setQueue(songsToQueue);
-    }
-  };
-
-  const play = () => {
-    if (audioRef.current) {
-        if (audioContextRef.current?.state === 'suspended') {
-          audioContextRef.current.resume();
-        }
-        audioRef.current.play().catch(e => console.error("Playback failed", e));
-    }
-  }
-
-  const pause = () => {
-    if (audioRef.current) {
-        audioRef.current.pause();
-    }
-  }
-
-  const playNextSong = () => {
-    if (!currentSong || queue.length === 0) return;
-    
-    if (repeatMode === 'one') {
-      if (audioRef.current) {
-        audioRef.current.currentTime = 0;
-        play();
-      }
-      return;
-    }
-
-    const currentIndex = queue.findIndex(s => s.id === currentSong.id);
-    if (currentIndex === -1) return;
-
-    let nextIndex = currentIndex + 1;
-    if (nextIndex >= queue.length) {
-      if (repeatMode === 'all') {
-        nextIndex = 0;
-      } else {
-        if (audioRef.current) {
-           audioRef.current.currentTime = audioRef.current.duration;
-           pause();
-        }
-        return;
-      }
-    }
-    
-    playSong(queue[nextIndex], queue);
-  };
-
-  const playPreviousSong = () => {
-    if (!currentSong || queue.length === 0) return;
-
-    if (audioRef.current && audioRef.current.currentTime > 3) {
-      audioRef.current.currentTime = 0;
-      return;
-    }
-
-    const currentIndex = queue.findIndex(s => s.id === currentSong.id);
-    if (currentIndex > 0) {
-      playSong(queue[currentIndex - 1], queue);
-    }
-  };
 
   const addToQueue = (song: Song) => {
     setQueue(prevQueue => [...prevQueue, song]);
