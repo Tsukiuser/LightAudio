@@ -79,19 +79,17 @@ async function verifyPermission(directoryHandle: FileSystemDirectoryHandle, requ
 }
 
 async function getFileHandleFromPath(dirHandle: FileSystemDirectoryHandle, path: string[]): Promise<FileSystemFileHandle | null> {
-    let current: FileSystemDirectoryHandle | FileSystemFileHandle = dirHandle;
-    for (const part of path) {
-        if (current.kind === 'directory') {
-            // @ts-ignore
-            current = await current.get(part);
-        } else {
-            return null; // Path is incorrect
+    let currentDir = dirHandle;
+    try {
+        for (let i = 0; i < path.length - 1; i++) {
+            currentDir = await currentDir.getDirectoryHandle(path[i]);
         }
+        const fileName = path[path.length - 1];
+        return await currentDir.getFileHandle(fileName);
+    } catch (error) {
+        console.error(`Error getting file handle for path: ${path.join('/')}`, error);
+        return null;
     }
-    if (current.kind === 'file') {
-        return current;
-    }
-    return null;
 }
 
 const shuffleArray = <T,>(array: T[]): T[] => {
