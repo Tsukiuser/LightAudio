@@ -9,7 +9,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { SongItem } from '@/components/SongItem';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Play, ListMusic, AlertTriangle, MoreHorizontal, GripVertical } from 'lucide-react';
+import { Play, ListMusic, AlertTriangle, MoreHorizontal, GripVertical, Pencil } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
@@ -29,7 +29,7 @@ import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-
 import { CSS } from '@dnd-kit/utilities';
 
 
-function SortablePlaylistItem({ song, queue, onRemove }: { song: Song, queue: Song[], onRemove: (songId: string) => void }) {
+function SortablePlaylistItem({ song, queue, onRemove, isEditing }: { song: Song, queue: Song[], onRemove: (songId: string) => void, isEditing: boolean }) {
     const {
         attributes,
         listeners,
@@ -37,7 +37,7 @@ function SortablePlaylistItem({ song, queue, onRemove }: { song: Song, queue: So
         transform,
         transition,
         isDragging
-    } = useSortable({ id: song.id });
+    } = useSortable({ id: song.id, disabled: !isEditing });
 
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -50,8 +50,8 @@ function SortablePlaylistItem({ song, queue, onRemove }: { song: Song, queue: So
             <SongItem
                 song={song}
                 queue={queue}
-                onRemove={() => onRemove(song.id)}
-                dragHandleProps={listeners}
+                onRemove={isEditing ? () => onRemove(song.id) : undefined}
+                dragHandleProps={isEditing ? listeners : undefined}
                 isDragging={isDragging}
             />
         </div>
@@ -61,6 +61,7 @@ function SortablePlaylistItem({ song, queue, onRemove }: { song: Song, queue: So
 
 export default function PlaylistDetailPage({ params }: { params: { id: string } }) {
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
   const musicContext = useContext(MusicContext);
   const router = useRouter();
   
@@ -151,42 +152,54 @@ export default function PlaylistDetailPage({ params }: { params: { id: string } 
                     <h1 className="text-3xl md:text-5xl font-bold mt-1 text-foreground break-words">{playlist.name}</h1>
                     <p className="text-sm text-muted-foreground mt-2">{songs.length} songs</p>
                     <div className="flex items-center gap-2 mt-4">
-                        <Button onClick={handlePlayPlaylist} disabled={songs.length === 0}>
-                            <Play className="mr-2 h-4 w-4" /> Play
-                        </Button>
-                        <AlertDialog>
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="outline" size="icon" className="h-10 w-10">
-                                        <MoreHorizontal />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                    <RenamePlaylistDialog playlist={playlist}>
-                                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                                        Rename Playlist
-                                        </DropdownMenuItem>
-                                    </RenamePlaylistDialog>
-                                    <AlertDialogTrigger asChild>
-                                        <DropdownMenuItem className="text-destructive">Delete Playlist</DropdownMenuItem>
-                                    </AlertDialogTrigger>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>Delete &quot;{playlist.name}&quot;?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        This action cannot be undone. This will permanently delete the playlist.
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={handleDeletePlaylist} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                                        Delete
-                                    </AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
+                        {isEditing ? (
+                             <Button onClick={() => setIsEditing(false)}>
+                                Done
+                            </Button>
+                        ) : (
+                            <>
+                                <Button onClick={handlePlayPlaylist} disabled={songs.length === 0}>
+                                    <Play className="mr-2 h-4 w-4" /> Play
+                                </Button>
+                                <AlertDialog>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="outline" size="icon" className="h-10 w-10">
+                                                <MoreHorizontal />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem onSelect={() => setIsEditing(true)}>
+                                                <Pencil className="mr-2 h-4 w-4" />
+                                                Edit Playlist
+                                            </DropdownMenuItem>
+                                            <RenamePlaylistDialog playlist={playlist}>
+                                                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                                Rename Playlist
+                                                </DropdownMenuItem>
+                                            </RenamePlaylistDialog>
+                                            <AlertDialogTrigger asChild>
+                                                <DropdownMenuItem className="text-destructive">Delete Playlist</DropdownMenuItem>
+                                            </AlertDialogTrigger>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Delete &quot;{playlist.name}&quot;?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                This action cannot be undone. This will permanently delete the playlist.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction onClick={handleDeletePlaylist} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                                Delete
+                                            </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>
@@ -198,7 +211,7 @@ export default function PlaylistDetailPage({ params }: { params: { id: string } 
                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                     <SortableContext items={songs.map(s => s.id)} strategy={verticalListSortingStrategy}>
                         {songs.map((song) => (
-                            <SortablePlaylistItem key={song.id} song={song} queue={songs} onRemove={handleRemoveSong}/>
+                            <SortablePlaylistItem key={song.id} song={song} queue={songs} onRemove={handleRemoveSong} isEditing={isEditing}/>
                         ))}
                     </SortableContext>
                 </DndContext>
