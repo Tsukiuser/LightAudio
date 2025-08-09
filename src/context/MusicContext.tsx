@@ -282,7 +282,6 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     audioRef.current.src = url;
     audioRef.current.load();
     audioRef.current.play().catch(e => {
-        // "The play() request was interrupted..." error is benign and can be ignored.
         if (e.name !== 'AbortError') {
             console.error("Playback failed", e)
         }
@@ -318,8 +317,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
       if (repeatMode === 'all') {
         nextIndex = 0;
       } else {
-        // End of queue, just stop.
-        setIsPlaying(false); 
+        setIsPlaying(false);
         return; 
       }
     }
@@ -362,10 +360,11 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
 
     const handlePlay = () => setIsPlaying(true);
     const handlePause = () => setIsPlaying(false);
+    const handleEnded = () => playNextSong();
     
-    audioRef.current?.addEventListener('play', handlePlay);
-    audioRef.current?.addEventListener('pause', handlePause);
-    audioRef.current?.addEventListener('ended', playNextSong);
+    audioElement.addEventListener('play', handlePlay);
+    audioElement.addEventListener('pause', handlePause);
+    audioElement.addEventListener('ended', handleEnded);
 
 
     const resumeAudioContext = () => {
@@ -378,10 +377,14 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     
     return () => {
         document.removeEventListener('click', resumeAudioContext);
-        audioRef.current?.removeEventListener('play', handlePlay);
-        audioRef.current?.removeEventListener('pause', handlePause);
-        audioRef.current?.removeEventListener('ended', playNextSong);
+        audioElement.removeEventListener('play', handlePlay);
+        audioElement.removeEventListener('pause', handlePause);
+        audioElement.removeEventListener('ended', handleEnded);
+        if (currentlyPlayingUrl) {
+          URL.revokeObjectURL(currentlyPlayingUrl);
+        }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playNextSong]);
 
   const playPreviousSong = useCallback(() => {
