@@ -74,6 +74,7 @@ async function verifyPermission(directoryHandle: FileSystemDirectoryHandle, requ
             return false;
         }
     }
+    // "query" is the only method that doesn't require user gesture
     const state = await directoryHandle.queryPermission(options);
     return state === 'granted';
 }
@@ -280,7 +281,12 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
     setCurrentlyPlayingUrl(url);
     audioRef.current.src = url;
     audioRef.current.load();
-    audioRef.current.play().catch(e => console.error("Playback failed", e));
+    audioRef.current.play().catch(e => {
+        // "The play() request was interrupted..." error is benign and can be ignored.
+        if (e.name !== 'AbortError') {
+            console.error("Playback failed", e)
+        }
+    });
     
     const songsToQueue = newQueue || songs.slice(songs.findIndex(s => s.id === song.id));
     setOriginalQueue(songsToQueue);
@@ -819,3 +825,5 @@ a.click();
     </MusicContext.Provider>
   );
 };
+
+    
