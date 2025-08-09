@@ -340,64 +340,60 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
 
 
   useEffect(() => {
-    if (audioRef.current) return;
+    const setupAudio = () => {
+        if (audioRef.current) return;
 
-    const audioElement = new Audio();
-    audioElement.id = 'audio-player-core';
-    document.body.appendChild(audioElement);
-    audioRef.current = audioElement;
+        const audioElement = new Audio();
+        audioElement.id = 'audio-player-core';
+        document.body.appendChild(audioElement);
+        audioRef.current = audioElement;
 
-    const setupAudioContext = () => {
-        if (audioRef.current && !audioContextRef.current) {
-            try {
-                const context = new (window.AudioContext || (window as any).webkitAudioContext)();
-                audioContextRef.current = context;
-                
-                const analyserNode = context.createAnalyser();
-                analyserNode.fftSize = 256;
-                setAnalyser(analyserNode);
+        const handlePlay = () => setIsPlaying(true);
+        const handlePause = () => setIsPlaying(false);
+        const handleEnded = () => playNextSong();
 
-                if (!sourceNodeRef.current) {
-                    const source = context.createMediaElementSource(audioRef.current);
-                    sourceNodeRef.current = source;
-                    source.connect(analyserNode);
-                    analyserNode.connect(context.destination);
-                }
-            } catch (e) {
-                console.error("Web Audio API is not supported in this browser", e);
-            }
+        audioElement.addEventListener('play', handlePlay);
+        audioElement.addEventListener('pause', handlePause);
+        audioElement.addEventListener('ended', handleEnded);
+
+        // Setup Web Audio API for visualizer
+        try {
+            const context = new (window.AudioContext || (window as any).webkitAudioContext)();
+            audioContextRef.current = context;
+            const analyserNode = context.createAnalyser();
+            analyserNode.fftSize = 256;
+            setAnalyser(analyserNode);
+
+            const sourceNode = context.createMediaElementSource(audioElement);
+            sourceNodeRef.current = sourceNode;
+            sourceNode.connect(analyserNode);
+            analyserNode.connect(context.destination);
+        } catch (e) {
+            console.error("Web Audio API is not supported in this browser", e);
         }
     };
-
-    setupAudioContext();
-
-    const handlePlay = () => setIsPlaying(true);
-    const handlePause = () => setIsPlaying(false);
+    setupAudio();
     
-    audioElement.addEventListener('play', handlePlay);
-    audioElement.addEventListener('pause', handlePause);
-    audioElement.addEventListener('ended', playNextSong);
-
-
     const resumeAudioContext = () => {
         if (audioContextRef.current?.state === 'suspended') {
             audioContextRef.current.resume();
         }
     };
-    
     document.addEventListener('click', resumeAudioContext, { once: true });
     
     return () => {
+        const audioElement = audioRef.current;
+        if (audioElement) {
+            audioElement.removeEventListener('play', () => setIsPlaying(true));
+            audioElement.removeEventListener('pause', () => setIsPlaying(false));
+            audioElement.removeEventListener('ended', playNextSong);
+        }
         document.removeEventListener('click', resumeAudioContext);
-        audioElement.removeEventListener('play', handlePlay);
-        audioElement.removeEventListener('pause', handlePause);
-        audioElement.removeEventListener('ended', playNextSong);
         if (currentlyPlayingUrl) {
           URL.revokeObjectURL(currentlyPlayingUrl);
         }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playNextSong]);
+  }, [playNextSong, currentlyPlayingUrl]);
 
   const playPreviousSong = useCallback(() => {
     if (!currentSong || queue.length === 0) return;
