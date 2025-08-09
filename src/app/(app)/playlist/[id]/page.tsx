@@ -29,7 +29,7 @@ import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-
 import { CSS } from '@dnd-kit/utilities';
 
 
-function SortablePlaylistItem({ song, onRemove }: { song: Song, onRemove: (songId: string) => void }) {
+function SortablePlaylistItem({ song, queue, onRemove }: { song: Song, queue: Song[], onRemove: (songId: string) => void }) {
     const {
         attributes,
         listeners,
@@ -49,6 +49,7 @@ function SortablePlaylistItem({ song, onRemove }: { song: Song, onRemove: (songI
         <div ref={setNodeRef} style={style} {...attributes}>
             <SongItem
                 song={song}
+                queue={queue}
                 onRemove={() => onRemove(song.id)}
                 dragHandleProps={listeners}
                 isDragging={isDragging}
@@ -197,7 +198,7 @@ export default function PlaylistDetailPage({ params }: { params: { id: string } 
                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                     <SortableContext items={songs.map(s => s.id)} strategy={verticalListSortingStrategy}>
                         {songs.map((song) => (
-                            <SortablePlaylistItem key={song.id} song={song} onRemove={handleRemoveSong}/>
+                            <SortablePlaylistItem key={song.id} song={song} queue={songs} onRemove={handleRemoveSong}/>
                         ))}
                     </SortableContext>
                 </DndContext>
