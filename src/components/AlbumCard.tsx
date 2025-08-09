@@ -7,7 +7,7 @@ import { AlbumPlaceholder } from './AlbumPlaceholder';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Button } from './ui/button';
 import { ListPlus, MoreVertical, Music2, User } from 'lucide-react';
-import { useContext } from 'react';
+import React, { useContext } from 'react';
 import { MusicContext } from '@/context/MusicContext';
 import { useToast } from '@/hooks/use-toast';
 
@@ -15,7 +15,7 @@ interface AlbumCardProps {
   album: Album;
 }
 
-export function AlbumCard({ album }: AlbumCardProps) {
+export const AlbumCard = React.memo(function AlbumCard({ album }: AlbumCardProps) {
     const musicContext = useContext(MusicContext);
     const { toast } = useToast();
 
@@ -97,4 +97,4 @@ export function AlbumCard({ album }: AlbumCardProps) {
       </div>
     </div>
   );
-}
+});

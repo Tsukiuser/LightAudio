@@ -1,7 +1,7 @@
 
 'use client'
 
-import { useContext } from 'react';
+import React, { useContext } from 'react';
 import Image from 'next/image';
 import type { Song } from '@/lib/types';
 import { MoreHorizontal, ListPlus, Music2, Album as AlbumIcon, X, Info, GripVertical, User } from 'lucide-react';
@@ -24,7 +24,7 @@ interface SongItemProps {
   isDragging?: boolean; // For dnd-kit
 }
 
-export function SongItem({ song, queue, onRemove, dragHandleProps, isDragging }: SongItemProps) {
+export const SongItem = React.memo(function SongItem({ song, queue, onRemove, dragHandleProps, isDragging }: SongItemProps) {
   const musicContext = useContext(MusicContext);
   const isCurrentSong = musicContext?.currentSong?.id === song.id;
   const { toast } = useToast();
@@ -156,4 +156,4 @@ export function SongItem({ song, queue, onRemove, dragHandleProps, isDragging }:
       )}
     </div>
   );
-}
+});

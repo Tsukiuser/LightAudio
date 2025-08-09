@@ -1,7 +1,7 @@
 
 'use client'
 
-import { useContext } from 'react';
+import { useContext, useMemo } from 'react';
 import { getAlbums } from '@/lib/music-utils';
 import { AlbumCard } from '@/components/AlbumCard';
 import { PageHeader } from '@/components/PageHeader';
@@ -17,9 +17,10 @@ export default function HomePage() {
   const musicContext = useContext(MusicContext);
   const { toast } = useToast();
   const songs = musicContext?.songs || [];
-  const albums = getAlbums(songs);
-  const recentlyAddedAlbums = [...albums].reverse();
-  const recentlyAddedSongs = [...songs].reverse().slice(0, 12);
+  
+  const albums = useMemo(() => getAlbums(songs), [songs]);
+  const recentlyAddedAlbums = useMemo(() => [...albums].reverse(), [albums]);
+  const recentlyAddedSongs = useMemo(() => [...songs].reverse().slice(0, 12), [songs]);
 
   const handleRescanFolder = async () => {
     await musicContext?.rescanMusic();
