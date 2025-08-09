@@ -66,8 +66,8 @@ let storedHandle: FileSystemDirectoryHandle | null = null;
 async function verifyPermission(directoryHandle: FileSystemDirectoryHandle, request = false) {
     const options = { mode: 'read' as const };
     if (request) {
-        // This should only be called following a user gesture.
         try {
+            // This should only be called following a user gesture.
             return (await directoryHandle.requestPermission(options)) === 'granted';
         } catch (error) {
             console.error("Permission request failed, likely not triggered by a user gesture.", error);
@@ -248,7 +248,11 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         if (audioContextRef.current?.state === 'suspended') {
           audioContextRef.current.resume();
         }
-        audioRef.current.play().catch(e => console.error("Playback failed", e));
+        audioRef.current.play().catch(e => {
+             if (e.name !== 'AbortError') {
+                console.error("Playback failed", e)
+             }
+        });
     }
   }, []);
 
@@ -260,6 +264,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
 
   const playSong = useCallback(async (song: Song, newQueue?: Song[]) => {
     if (!storedHandle || !audioRef.current) return;
+    const audio = audioRef.current;
 
     if (audioContextRef.current?.state === 'suspended') {
       await audioContextRef.current.resume();
@@ -279,13 +284,19 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
 
     setCurrentSong(song);
     setCurrentlyPlayingUrl(url);
-    audioRef.current.src = url;
-    audioRef.current.load();
-    audioRef.current.play().catch(e => {
-        if (e.name !== 'AbortError') {
-            console.error("Playback failed", e)
-        }
-    });
+
+    const onCanPlayThrough = () => {
+        audio.play().catch(e => {
+            if (e.name !== 'AbortError') {
+                console.error("Playback initiation failed", e);
+            }
+        });
+        // Remove listener to avoid it being called again on seek
+        audio.removeEventListener('canplaythrough', onCanPlayThrough);
+    };
+    audio.addEventListener('canplaythrough', onCanPlayThrough);
+    audio.src = url;
+    audio.load();
     
     const songsToQueue = newQueue || songs.slice(songs.findIndex(s => s.id === song.id));
     setOriginalQueue(songsToQueue);
@@ -299,14 +310,12 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
   }, [songs, isShuffled, currentlyPlayingUrl, toast]);
 
   const playNextSong = useCallback(() => {
-    if (!currentSong || queue.length === 0) return;
+    if (!currentSong) return;
     
-    if (repeatMode === 'one') {
-      if (audioRef.current) {
+    if (repeatMode === 'one' && audioRef.current) {
         audioRef.current.currentTime = 0;
         play();
-      }
-      return;
+        return;
     }
 
     const currentIndex = queue.findIndex(s => s.id === currentSong.id);
@@ -317,7 +326,11 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
       if (repeatMode === 'all') {
         nextIndex = 0;
       } else {
-        setIsPlaying(false);
+        // Stop playback if at the end of the queue and no repeat
+        setCurrentSong(null);
+        if (audioRef.current) {
+            audioRef.current.src = '';
+        }
         return; 
       }
     }
@@ -360,11 +373,10 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
 
     const handlePlay = () => setIsPlaying(true);
     const handlePause = () => setIsPlaying(false);
-    const handleEnded = () => playNextSong();
     
     audioElement.addEventListener('play', handlePlay);
     audioElement.addEventListener('pause', handlePause);
-    audioElement.addEventListener('ended', handleEnded);
+    audioElement.addEventListener('ended', playNextSong);
 
 
     const resumeAudioContext = () => {
@@ -379,7 +391,7 @@ export const MusicProvider = ({ children }: { children: ReactNode }) => {
         document.removeEventListener('click', resumeAudioContext);
         audioElement.removeEventListener('play', handlePlay);
         audioElement.removeEventListener('pause', handlePause);
-        audioElement.removeEventListener('ended', handleEnded);
+        audioElement.removeEventListener('ended', playNextSong);
         if (currentlyPlayingUrl) {
           URL.revokeObjectURL(currentlyPlayingUrl);
         }
@@ -828,5 +840,3 @@ a.click();
     </MusicContext.Provider>
   );
 };
-
-    
