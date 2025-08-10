@@ -35,6 +35,7 @@ const withPWA = require('next-pwa')({
 
 const nextConfig: NextConfig = {
   output: 'export',
+  basePath: '/LightAudio',
   /* config options here */
   typescript: {
     ignoreBuildErrors: true,
