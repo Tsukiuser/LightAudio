@@ -72,7 +72,7 @@ define(['./workbox-e43f5367'], (function (workbox) { 'use strict';
   importScripts();
   self.skipWaiting();
   workbox.clientsClaim();
-  workbox.registerRoute("/", new workbox.NetworkFirst({
+  workbox.registerRoute("/LightAudio", new workbox.NetworkFirst({
     "cacheName": "start-url",
     plugins: [{
       cacheWillUpdate: async ({
