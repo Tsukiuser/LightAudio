@@ -5,12 +5,6 @@ const nextConfig: NextConfig = {
   output: 'export',
   basePath: '/LightAudio',
   assetPrefix: '/LightAudio/',
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   images: {
     unoptimized: true,
     remotePatterns: [
@@ -21,6 +15,12 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
     ],
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
   },
    webpack: (config, { isServer }) => {
     // This is to support our music scanner web worker
