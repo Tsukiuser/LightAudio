@@ -139,13 +139,13 @@ export const SongItem = React.memo(function SongItem({ song, queue, onRemove, dr
                     </DropdownMenuItem>
                 </SongDetailsDialog>
                 <DropdownMenuItem asChild>
-                    <Link href={`/album/${encodeURIComponent(song.artist)}/${encodeURIComponent(song.album)}`}>
+                    <Link href={`/album?artist=${encodeURIComponent(song.artist)}&name=${encodeURIComponent(song.album)}`}>
                         <AlbumIcon className="mr-2 h-4 w-4" />
                         Go to Album
                     </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                    <Link href={`/artist/${encodeURIComponent(song.artist)}`}>
+                    <Link href={`/artist?name=${encodeURIComponent(song.artist)}`}>
                         <User className="mr-2 h-4 w-4" />
                         Go to Artist
                     </Link>

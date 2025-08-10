@@ -1,8 +1,8 @@
 
 'use client'
 
-import { useContext, useEffect, useState, useMemo } from 'react';
-import { notFound, useRouter } from 'next/navigation';
+import { useContext, useEffect, useState, useMemo, Suspense } from 'react';
+import { notFound, useRouter, useSearchParams } from 'next/navigation';
 import { MusicContext } from '@/context/MusicContext';
 import type { Playlist, Song } from '@/lib/types';
 import { PageHeader } from '@/components/PageHeader';
@@ -58,23 +58,25 @@ function SortablePlaylistItem({ song, queue, onRemove, isEditing }: { song: Song
     );
 }
 
+function PlaylistDetailContent() {
+  const searchParams = useSearchParams();
+  const playlistIdParam = searchParams.get('id');
 
-export default function PlaylistDetailPage({ params }: { params: { id: string } }) {
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const musicContext = useContext(MusicContext);
   const router = useRouter();
   
   useEffect(() => {
-    if (musicContext?.playlists) {
-      const foundPlaylist = musicContext.playlists.find(p => p.id === params.id);
+    if (musicContext?.playlists && playlistIdParam) {
+      const foundPlaylist = musicContext.playlists.find(p => p.id === playlistIdParam);
       if (foundPlaylist) {
         setPlaylist(foundPlaylist);
       } else {
         notFound();
       }
     }
-  }, [musicContext?.playlists, params.id]);
+  }, [musicContext?.playlists, playlistIdParam]);
 
   const { songs, missingSongsCount } = useMemo(() => {
     if (!playlist || !musicContext) return { songs: [], missingSongsCount: 0 };
@@ -231,5 +233,13 @@ export default function PlaylistDetailPage({ params }: { params: { id: string } 
         </div>
       </div>
     </ScrollArea>
+  );
+}
+
+export default function PlaylistDetailPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <PlaylistDetailContent />
+    </Suspense>
   );
 }

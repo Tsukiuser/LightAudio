@@ -1,7 +1,7 @@
 
 'use client'
 
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useState, Suspense } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { MusicContext } from '@/context/MusicContext';
@@ -9,7 +9,7 @@ import { getAlbums } from '@/lib/music-utils';
 import type { Album } from '@/lib/types';
 import { PageHeader } from '@/components/PageHeader';
 import { SongItem } from '@/components/SongItem';
-import { notFound } from 'next/navigation';
+import { notFound, useSearchParams } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Play, MoreHorizontal, ListPlus, Music2, User } from 'lucide-react';
@@ -18,25 +18,28 @@ import { AlbumPlaceholder } from '@/components/AlbumPlaceholder';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 
-export default function AlbumDetailPage({ params }: { params: { artist: string; album: string } }) {
+function AlbumDetailContent() {
+  const searchParams = useSearchParams();
+  const artistNameParam = searchParams.get('artist');
+  const albumNameParam = searchParams.get('name');
+
   const [album, setAlbum] = useState<Album | null>(null);
   const musicContext = useContext(MusicContext);
   const { toast } = useToast();
   
   useEffect(() => {
-    if (musicContext?.songs) {
-      const artistName = decodeURIComponent(params.artist);
-      const albumName = decodeURIComponent(params.album);
+    if (musicContext?.songs && artistNameParam && albumNameParam) {
+      const artistName = decodeURIComponent(artistNameParam);
+      const albumName = decodeURIComponent(albumNameParam);
       const allAlbums = getAlbums(musicContext.songs);
       const foundAlbum = allAlbums.find(a => a.name === albumName && a.artist === artistName);
       if (foundAlbum) {
         setAlbum(foundAlbum);
       } else {
-        // If the album is not found after songs are loaded, it's a 404
         notFound();
       }
     }
-  }, [musicContext?.songs, params.artist, params.album, params]);
+  }, [musicContext?.songs, artistNameParam, albumNameParam]);
 
   const handlePlayAlbum = () => {
     if (album?.songs && album.songs.length > 0) {
@@ -59,7 +62,6 @@ export default function AlbumDetailPage({ params }: { params: { artist: string; 
         album.songs.forEach(song => musicContext?.addSongToPlaylist(playlistId, song.id));
     }
   }
-
 
   if (musicContext?.isLoading || !album) {
     return (
@@ -102,7 +104,7 @@ export default function AlbumDetailPage({ params }: { params: { artist: string; 
                 <div className="flex flex-col items-center md:items-start text-center md:text-left pt-4">
                     <p className="text-sm font-medium text-muted-foreground uppercase">Album</p>
                     <h1 className="text-3xl md:text-5xl font-bold mt-1 text-foreground break-words">{album.name}</h1>
-                    <Link href={`/artist/${encodeURIComponent(album.artist)}`} className="text-xl md:text-2xl text-muted-foreground mt-2 hover:underline">{album.artist}</Link>
+                    <Link href={`/artist?name=${encodeURIComponent(album.artist)}`} className="text-xl md:text-2xl text-muted-foreground mt-2 hover:underline">{album.artist}</Link>
                     <p className="text-sm text-muted-foreground mt-2">{album.songs.length} songs</p>
                     <div className="flex items-center gap-2 mt-4">
                         <Button onClick={handlePlayAlbum}>
@@ -138,7 +140,7 @@ export default function AlbumDetailPage({ params }: { params: { artist: string; 
                                 </DropdownMenuSub>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem asChild>
-                                    <Link href={`/artist/${encodeURIComponent(album.artist)}`}>
+                                    <Link href={`/artist?name=${encodeURIComponent(album.artist)}`}>
                                         <User className="mr-2 h-4 w-4" />
                                         Go to Artist
                                     </Link>
@@ -159,5 +161,13 @@ export default function AlbumDetailPage({ params }: { params: { artist: string; 
         </div>
       </div>
     </ScrollArea>
+  );
+}
+
+export default function AlbumDetailPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <AlbumDetailContent />
+    </Suspense>
   );
 }

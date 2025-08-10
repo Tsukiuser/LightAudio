@@ -92,7 +92,7 @@ export function AppSidebar() {
                 </CreatePlaylistDialog>
             </div>
              {musicContext?.playlists.map((playlist) => {
-                 const isActive = pathname === `/playlist/${playlist.id}`;
+                 const isActive = pathname === `/playlist`;
                  return (
                   <AlertDialog key={playlist.id}>
                     <DropdownMenu>
@@ -111,7 +111,7 @@ export function AppSidebar() {
                               }}
                           >
                               <ListMusic className="h-5 w-5" />
-                              <Link href={`/playlist/${playlist.id}`} className={cn("truncate flex-1", state === 'collapsed' && 'hidden')}>
+                              <Link href={`/playlist?id=${playlist.id}`} className={cn("truncate flex-1", state === 'collapsed' && 'hidden')}>
                                   {playlist.name}
                               </Link>
                           </button>

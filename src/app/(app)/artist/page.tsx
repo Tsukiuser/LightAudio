@@ -1,8 +1,8 @@
 
 'use client'
 
-import { useContext, useEffect, useState } from 'react';
-import { notFound } from 'next/navigation';
+import { useContext, useEffect, useState, Suspense } from 'react';
+import { notFound, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { MusicContext } from '@/context/MusicContext';
 import { getArtists } from '@/lib/music-utils';
@@ -13,13 +13,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AlbumPlaceholder } from '@/components/AlbumPlaceholder';
 
-export default function ArtistDetailPage({ params }: { params: { name: string } }) {
+function ArtistDetailContent() {
+  const searchParams = useSearchParams();
+  const artistNameParam = searchParams.get('name');
+
   const [artist, setArtist] = useState<Artist | null>(null);
   const musicContext = useContext(MusicContext);
 
   useEffect(() => {
-    if (musicContext?.songs) {
-      const artistName = decodeURIComponent(params.name);
+    if (musicContext?.songs && artistNameParam) {
+      const artistName = decodeURIComponent(artistNameParam);
       const allArtists = getArtists(musicContext.songs);
       const foundArtist = allArtists.find(a => a.name === artistName);
       if (foundArtist) {
@@ -28,7 +31,7 @@ export default function ArtistDetailPage({ params }: { params: { name: string } 
         notFound();
       }
     }
-  }, [musicContext?.songs, params.name]);
+  }, [musicContext?.songs, artistNameParam]);
 
   if (musicContext?.isLoading || !artist) {
     return (
@@ -89,5 +92,13 @@ export default function ArtistDetailPage({ params }: { params: { name: string } 
         </div>
       </div>
     </ScrollArea>
+  );
+}
+
+export default function ArtistDetailPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ArtistDetailContent />
+    </Suspense>
   );
 }

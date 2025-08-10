@@ -214,7 +214,7 @@ export default function AudioPlayer() {
       <TooltipProvider>
         <div className="bg-background/80 backdrop-blur-md border-t border-border/80 p-2 md:p-4">
           <div className="container mx-auto flex items-center gap-4">
-            <Link href={`/album/${encodeURIComponent(currentSong.artist)}/${encodeURIComponent(currentSong.album)}`} className="h-10 w-10 md:h-14 md:w-14 flex-shrink-0">
+            <Link href={`/album?artist=${encodeURIComponent(currentSong.artist)}&name=${encodeURIComponent(currentSong.album)}`} className="h-10 w-10 md:h-14 md:w-14 flex-shrink-0">
                 {currentSong.coverArt ? (
                   <Image
                     src={currentSong.coverArt}

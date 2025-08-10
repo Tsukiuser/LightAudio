@@ -34,7 +34,7 @@ export const AlbumCard = React.memo(function AlbumCard({ album }: AlbumCardProps
 
   return (
     <div className="group relative">
-        <Link href={`/album/${encodeURIComponent(album.artist)}/${encodeURIComponent(album.name)}`}>
+        <Link href={`/album?artist=${encodeURIComponent(album.artist)}&name=${encodeURIComponent(album.name)}`}>
             <Card className="overflow-hidden transition-all group-hover:shadow-lg group-hover:shadow-primary/20">
                 <CardContent className="p-0">
                     {album.coverArt ? (
@@ -87,7 +87,7 @@ export const AlbumCard = React.memo(function AlbumCard({ album }: AlbumCardProps
                 </DropdownMenuSub>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                    <Link href={`/artist/${encodeURIComponent(album.artist)}`}>
+                    <Link href={`/artist?name=${encodeURIComponent(album.artist)}`}>
                         <User className="mr-2 h-4 w-4" />
                         Go to Artist
                     </Link>

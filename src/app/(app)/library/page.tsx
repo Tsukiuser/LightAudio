@@ -45,7 +45,7 @@ export default function LibraryPage() {
 
   const PlaylistCard = ({ playlist }: { playlist: Playlist }) => (
     <div className="group relative">
-      <Link href={`/playlist/${playlist.id}`} key={playlist.id}>
+      <Link href={`/playlist?id=${playlist.id}`} key={playlist.id}>
         <Card className="overflow-hidden transition-all group-hover:shadow-lg group-hover:shadow-primary/20">
           <CardContent className="p-0">
             <div className="aspect-square w-full bg-muted flex items-center justify-center">
@@ -129,7 +129,7 @@ export default function LibraryPage() {
           <TabsContent value="artists" className="mt-6">
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
               {allArtists.map((artist) => (
-                <Link key={artist.name} href={`/artist/${encodeURIComponent(artist.name)}`} className="group relative text-center">
+                <Link key={artist.name} href={`/artist?name=${encodeURIComponent(artist.name)}`} className="group relative text-center">
                     <div className="aspect-square w-full rounded-full overflow-hidden transition-transform group-hover:scale-105">
                       {artist.coverArt ? (
                         <Image

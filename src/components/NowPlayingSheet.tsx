@@ -124,7 +124,7 @@ export default function NowPlayingSheet({ open, onOpenChange, progress, duration
                 </SheetHeader>
                 
                 <div className="flex-1 flex flex-col justify-between p-4 overflow-hidden">
-                    <Link href={`/album/${encodeURIComponent(currentSong.artist)}/${encodeURIComponent(currentSong.album)}`} className="aspect-square rounded-lg shadow-lg max-w-sm mx-auto overflow-hidden group" onClick={() => onOpenChange(false)}>
+                    <Link href={`/album?artist=${encodeURIComponent(currentSong.artist)}&name=${encodeURIComponent(currentSong.album)}`} className="aspect-square rounded-lg shadow-lg max-w-sm mx-auto overflow-hidden group" onClick={() => onOpenChange(false)}>
                         {currentSong.coverArt ? (
                             <Image
                                 src={currentSong.coverArt}
