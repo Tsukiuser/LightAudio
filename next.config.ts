@@ -4,6 +4,7 @@ import type {NextConfig} from 'next';
 const nextConfig: NextConfig = {
   output: 'export',
   basePath: '/LightAudio',
+  assetPrefix: '/LightAudio/',
   typescript: {
     ignoreBuildErrors: true,
   },
